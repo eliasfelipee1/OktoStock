@@ -1,0 +1,164 @@
+import hashlib
+import json
+from decimal import Decimal
+from unittest.mock import MagicMock
+
+import httpx
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
+from app import ai
+from app.db import connect
+from app.main import app
+
+
+@pytest.fixture
+def provider(monkeypatch):
+    monkeypatch.setenv('OPENAI_API_KEY', 'test-placeholder-never-real')
+    client = MagicMock()
+    monkeypatch.setattr(ai.httpx, 'Client', MagicMock(return_value=client))
+    client.__enter__.return_value = client
+    return client
+
+
+def context():
+    return {'periodo': {'inicio': '2026-10-01'}, 'gerado_em': '2026-10-08', 'insumos_truncados': False}
+
+
+def test_missing_key_never_calls_provider(monkeypatch):
+    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    client = MagicMock()
+    monkeypatch.setattr(ai.httpx, 'Client', client)
+    with pytest.raises(HTTPException) as exc:
+        ai.answer('Como estamos?', context())
+    assert exc.value.status_code == 503
+    client.assert_not_called()
+
+
+def test_provider_request_and_text_extraction(provider):
+    provider.post.return_value = httpx.Response(200, json={'status': 'completed', 'output': [
+        {'type': 'reasoning', 'summary': []},
+        {'type': 'message', 'content': [{'type': 'output_text', 'text': 'Estoque suficiente.'}]}]})
+    result = ai.answer('O que comprar?', context())
+    assert result['resposta'] == 'Estoque suficiente.'
+    args, kwargs = provider.post.call_args
+    assert args[0] == 'https://api.openai.com/v1/responses'
+    assert kwargs['json']['store'] is False
+    assert 'tools' not in kwargs['json']
+    assert 'test-placeholder-never-real' not in json.dumps(kwargs['json'])
+
+
+@pytest.mark.parametrize('status,code', [(401, 'IA_CREDENCIAL_RECUSADA'), (403, 'IA_CREDENCIAL_RECUSADA'),
+    (429, 'IA_LIMITE_DO_PROVEDOR'), (500, 'IA_INDISPONIVEL')])
+def test_provider_errors_are_sanitized(provider, status, code):
+    provider.post.return_value = httpx.Response(status, text='private upstream debug')
+    with pytest.raises(HTTPException) as exc:
+        ai.answer('O que comprar?', context())
+    assert exc.value.detail == {'codigo': code}
+
+
+def test_timeout(provider):
+    provider.post.side_effect = httpx.ReadTimeout('private request detail')
+    with pytest.raises(HTTPException) as exc:
+        ai.answer('O que comprar?', context())
+    assert exc.value.status_code == 504
+
+
+@pytest.mark.parametrize('body,code', [
+    ({'status': 'incomplete'}, 'IA_RESPOSTA_INCOMPLETA'),
+    ({'status': 'completed', 'output': []}, 'IA_RESPOSTA_VAZIA'),
+    (['wrong format'], 'IA_RESPOSTA_INVALIDA')])
+def test_invalid_output(provider, body, code):
+    provider.post.return_value = httpx.Response(200, json=body)
+    with pytest.raises(HTTPException) as exc:
+        ai.answer('O que comprar?', context())
+    assert exc.value.detail['codigo'] == code
+
+
+def test_ai_auth_configuration_and_validation(setup, monkeypatch):
+    c = setup
+    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    assert c.get('/ia/status').json()['configurado'] is False
+    assert c.post('/ia/perguntar', json={'pergunta': 'O que comprar?'}).status_code == 503
+    assert c.post('/ia/perguntar', json={'pergunta': 'oi'}).status_code == 422
+    assert c.get('/ia/contexto?dias_historico=999').status_code == 422
+    c.headers['Authorization'] = 'Bearer caixa'
+    for path in ['/ia/status', '/ia/contexto']:
+        assert c.get(path).status_code == 403
+    assert c.post('/ia/perguntar', json={'pergunta': 'O que comprar?'}).status_code == 403
+    c.headers.pop('Authorization')
+    assert c.get('/ia/status').status_code in (401, 403)
+
+
+def test_context_tenant_isolation_decimal_and_empty_days(setup):
+    c = setup
+    item = c.post('/insumos', json={'nome': 'Teste', 'unidade': 'g', 'estoque_minimo': '10'}).json()
+    with connect() as db:
+        u = db.execute("SELECT * FROM usuarios WHERE nome='gerente'").fetchone()
+        lot = db.execute('''INSERT INTO lotes(operacao_id,insumo_id,codigo,fornecedor,validade,saldo,custo_unitario)
+            VALUES(%s,%s,'T','T',CURRENT_DATE+3,30,0.01) RETURNING id''', (u['operacao_id'], item['id'])).fetchone()['id']
+        db.execute('''INSERT INTO movimentacoes(operacao_id,lote_id,usuario_id,tipo,quantidade,custo_unitario,criado_em)
+            VALUES(%s,%s,%s,'venda',-100,0.01,CURRENT_DATE-1)''', (u['operacao_id'], lot, u['id']))
+        other = db.execute("INSERT INTO operacoes(nome) VALUES('Other') RETURNING id").fetchone()['id']
+        db.execute("INSERT INTO insumos(operacao_id,nome,unidade) VALUES(%s,'SECRET_OTHER','g')", (other,))
+        db.execute('INSERT INTO usuarios(operacao_id,nome,papel,token_hash) VALUES(%s,%s,%s,%s)',
+            (other, 'other', 'ia', hashlib.sha256(b'other').hexdigest()))
+    result = c.get('/ia/contexto?dias_historico=2&dias_cobertura=3')
+    assert result.status_code == 200, result.text
+    assert 'SECRET_OTHER' not in result.text
+    ingredient = result.json()['insumos'][0]
+    assert Decimal(str(ingredient['media_diaria'])) == 50
+    assert Decimal(str(ingredient['necessidade_teorica'])) == 130
+    assert ingredient['compra_sugerida'] is None
+    assert ingredient['pendencias_compra']
+    c.headers['Authorization'] = 'Bearer other'
+    other_result = c.get('/ia/contexto').json()
+    assert len(other_result['insumos']) == 1
+    assert other_result['insumos'][0]['nome'] == 'SECRET_OTHER'
+    assert other_result['resumo']['receita'] == 0
+
+
+def test_question_passes_only_authorized_context(setup, monkeypatch):
+    c = setup
+    monkeypatch.setenv('OPENAI_API_KEY', 'test-only')
+    captured = {}
+    def fake_answer(question, data):
+        captured.update(data)
+        return {'resposta': 'Sem vendas no periodo.'}
+    monkeypatch.setattr(ai, 'answer', fake_answer)
+    c.headers['Authorization'] = 'Bearer ia'
+    response = c.post('/ia/perguntar', json={'pergunta': 'Como está minha margem?'})
+    assert response.status_code == 200
+    assert captured['resumo']['receita'] == 0
+    assert 'token_hash' not in captured
+
+
+def test_frontend_served_without_database():
+    with TestClient(app) as c:
+        assert c.get('/').status_code == 200
+        for page in ['index', 'estoque', 'vendas', 'receitas', 'agente']:
+            r = c.get(f'/painel/{page}.html')
+            assert r.status_code == 200
+            assert '<script' not in r.text.lower()
+        assert c.get('/painel/styles.css').status_code == 200
+        assert c.get('/painel/.env').status_code == 404
+
+
+def test_otto_empty_and_new_ingredient_have_no_invented_forecast(setup):
+    c = setup
+    result = c.get('/ia/contexto').json()
+    assert result['agente'] == 'Otto'
+    assert result['estado_dados'] == 'sem_cadastros'
+    assert result['sem_vendas_no_periodo'] is True
+    assert result['pendencias']
+    assert result['produtos'] == [] and result['fichas'] == []
+    c.post('/insumos', json={'nome': 'Insumo real', 'unidade': 'g', 'estoque_minimo': '50'})
+    result = c.get('/ia/contexto').json()
+    assert result['estado_dados'] == 'com_cadastros'
+    item = result['insumos'][0]
+    assert item['media_diaria'] is None
+    assert item['necessidade_teorica'] is None
+    assert item['compra_sugerida'] is None
+    assert item['lotes_cadastrados'] == 0
+    assert c.get('/ia/status').json()['nome'] == 'Otto'

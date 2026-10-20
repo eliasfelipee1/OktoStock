@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="OktoStock — gestão de estoque e operação para sua barraca. Interface preparada para dados cadastrados."
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Estoque · OktoStock</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+    <div class="layout">
+      <aside class="sidebar">
+        <a class="brand" href="index.html" aria-label="OktoStock início"
+          ><span class="logo">✳</span
+          ><span class="brand-name"
+            >okto<span style="font-weight: 400">stock</span
+            ><small>MENOS PERDA. MAIS CONTROLE.</small></span
+          ></a
+        >
+        <div class="workspace">
+          <div class="avatar">B</div>
+          <div>
+            <strong>Barraca principal</strong
+            ><span>Dados cadastrados no sistema</span>
+          </div>
+        </div>
+        <p class="nav-label">OPERAÇÃO</p>
+        <nav aria-label="Menu principal">
+          <a href="index.html" aria-label="Visão geral"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" /></svg
+            ><span>Visão geral</span></a
+          ><a href="estoque.html" aria-current="page" aria-label="Estoque"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="m3 7 9-4 9 4v10l-9 4-9-4Z M3 7l9 4 9-4 M12 11v10 M7 5l10 4"
+              /></svg
+            ><span>Estoque</span></a
+          ><a href="vendas.html" aria-label="Vendas"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3h2l3 12h11l2-8H6" />
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="18" cy="20" r="1" /></svg
+            ><span>Vendas</span></a
+          ><a href="receitas.html" aria-label="Fichas técnicas"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"
+              /></svg
+            ><span>Fichas técnicas</span></a
+          ><a href="agente.html" aria-label="Otto · assistente IA"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"
+              /></svg
+            ><span>Otto · assistente IA</span><span class="nav-tag">IA</span></a
+          >
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="tip">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 19C0 8 12 3 21 3c0 10-4 18-13 15m-3 3L16 9" />
+            </svg>
+            <h3>Cada ingrediente conta.</h3>
+            <p>Uma operação organizada começa com um estoque bem cuidado.</p>
+            <a href="estoque.html">Acompanhar estoque →</a>
+          </div>
+          <div class="profile">
+            <div class="avatar">DG</div>
+            <div>
+              <strong>Sua operação</strong><small>Painel operacional</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main class="main" id="conteudo">
+        <header class="topbar">
+          <div class="crumb">
+            Sua operação <span aria-hidden="true">/</span>
+            <strong>Estoque</strong>
+          </div>
+          <div class="top-meta">
+            <span>Organização que dá resultado</span
+            ><span class="demo-badge"
+              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+            >
+          </div>
+        </header>
+        <div class="content">
+          <section class="heading">
+            <div>
+              <p class="eyebrow">PAINEL DA OPERAÇÃO</p>
+              <h1>Estoque</h1>
+              <p class="subtext">
+                Acompanhe os ingredientes e lotes da operação.
+              </p>
+            </div>
+            <div class="actions">
+              <span class="button">Período não selecionado</span
+              ><a class="button primary" href="estoque.html"
+                >Ver estoque
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14m-5-5 5 5-5 5" /></svg
+              ></a>
+            </div>
+          </section>
+          <div class="notice">
+            Os dados serão cadastrados nas tabelas do sistema. Esta interface
+            HTML/CSS ainda não consulta a API; nenhum valor de exemplo é
+            exibido.
+          </div>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Aguardando integração com o estoque</h2>
+                <p>Informações da operação</p>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="empty-state">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="m3 7 9-4 9 4v10l-9 4-9-4Z M3 7l9 4 9-4 M12 11v10 M7 5l10 4"
+                  />
+                </svg>
+                <h3>Os cadastros serão adicionados depois.</h3>
+                <p>
+                  Cadastre insumos e recebimentos nas tabelas. Os saldos e as
+                  validades precisam vir desses registros.
+                </p>
+              </div>
+            </div>
+          </section>
+          <footer class="footer">
+            <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
+            ><span>HTML + CSS · sem dados de exemplo</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

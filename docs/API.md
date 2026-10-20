@@ -45,3 +45,9 @@ Erro de negócio: `{"detail":{"codigo":"ESTOQUE_INSUFICIENTE"}}`. Validação Py
 - 422: campos inválidos, `INGREDIENTE_DUPLICADO`, `LOTE_VENCIDO` no recebimento.
 
 Não acessar PostgreSQL diretamente nas telas. Para frontend em outra origem, DEV1 deve configurar CORS com as origens exatas de desenvolvimento/produção; esta base não libera CORS globalmente.
+
+## Assistente IA
+
+`GET /ia/status`, `GET /ia/contexto` e `POST /ia/perguntar` aceitam apenas gerente/ia. Parâmetros, respostas e erros: veja `IA.md`. A chave do provedor é definida no backend; clientes usam o mesmo token individual de autenticação da API.
+
+O frontend estático é servido em `/painel/`, sem autenticação porque contém somente a estrutura visual e estados de espera, sem dados da operação. As rotas de dados continuam autenticadas.

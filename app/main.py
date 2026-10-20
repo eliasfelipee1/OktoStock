@@ -3,12 +3,16 @@ import hashlib
 import json
 from collections import defaultdict
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
 
+from app import ai
 from app.db import connect
 from app.schemas import Insumo, Motivo, Perda, Produto, Recebimento, Venda
 
@@ -320,3 +324,34 @@ def consumption(u=Depends(user)):
             -sum(m.quantidade) AS quantidade,-sum(m.quantidade*m.custo_unitario) AS custo
             FROM movimentacoes m JOIN lotes l ON l.id=m.lote_id JOIN insumos i ON i.id=l.insumo_id
             WHERE m.operacao_id=%s AND m.tipo IN ('venda','perda') GROUP BY 1,2,3,4,5 ORDER BY 1''', (u['operacao_id'],)).fetchall()
+
+
+# Frontend estatico e assistente consultivo. Arquivos publicos nunca contem dados reais.
+@app.get('/', include_in_schema=False)
+def homepage():
+    return RedirectResponse('/painel/')
+
+
+@app.get('/ia/status')
+def ai_status(u=Depends(user)):
+    roles(u, 'gerente', 'ia')
+    return ai.configuration()
+
+
+@app.get('/ia/contexto')
+def ai_context(dias_historico: int = Query(7, ge=1, le=90),
+               dias_cobertura: int = Query(3, ge=1, le=30), u=Depends(user)):
+    roles(u, 'gerente', 'ia')
+    return ai.build_context(u['operacao_id'], dias_historico, dias_cobertura)
+
+
+@app.post('/ia/perguntar')
+def ai_question(body: ai.Question, u=Depends(user)):
+    roles(u, 'gerente', 'ia')
+    if not ai.configuration()['configurado']:
+        fail('IA_NAO_CONFIGURADA', 503)
+    context = ai.build_context(u['operacao_id'], body.dias_historico, body.dias_cobertura)
+    return ai.answer(body.pergunta, context)
+
+
+app.mount('/painel', StaticFiles(directory=Path(__file__).resolve().parents[1] / 'frontend', html=True), name='painel')

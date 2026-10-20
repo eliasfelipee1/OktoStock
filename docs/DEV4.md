@@ -53,3 +53,9 @@ Sua tarefa é evoluir isso: calendário de abertura, feriados/eventos, prazo de 
 Depois que os indicadores estiverem corretos, um modelo de linguagem pode explicar os números e responder perguntas sobre eles. Envie somente agregados necessários, mantenha cálculos em Python/SQL, cite período/dados usados e não dê acesso de escrita nem SQL livre ao modelo. Chaves de provedores ficam no backend do DEV4.
 
 Entregáveis: dashboard funcional, definição dos indicadores, módulo de previsão testado, relatório de comparação com a baseline e documentação de como executar. A escolha da biblioteca de dashboard/IA pode ser feita com a equipe; nenhuma integração externa é necessária para iniciar.
+
+## Estrutura já preparada nesta entrega
+
+O backend do assistente está em `app/ai.py`, com leitura por operação, agregados, sugestão determinística de compra, prompt consultivo, chamada à Responses API e tratamento de falhas. A configuração fica em `.env`; instruções em `IA.md`. O frontend visual está em `frontend/agente.html`, sem envio de mensagens nesta etapa. Sua próxima entrega é integrar a experiência autenticada e avaliar a qualidade das respostas e previsões com dados reais.
+
+Atualização: o assistente chama-se **Otto**. O frontend não usa mais valores demonstrativos. No contexto do agente, médias sem histórico são nulas e compras finais ficam pendentes dos parâmetros de demanda, validade, perdas, armazenamento e fornecedor; o script de baseline é apenas uma referência de cálculo, não uma recomendação aprovada. Consulte `OTTO_REQUISITOS.md` e `IA.md`.

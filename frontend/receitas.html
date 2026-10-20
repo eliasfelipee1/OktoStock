@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="OktoStock — gestão de estoque e operação para sua barraca. Interface preparada para dados cadastrados."
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Fichas técnicas · OktoStock</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+    <div class="layout">
+      <aside class="sidebar">
+        <a class="brand" href="index.html" aria-label="OktoStock início"
+          ><span class="logo">✳</span
+          ><span class="brand-name"
+            >okto<span style="font-weight: 400">stock</span
+            ><small>MENOS PERDA. MAIS CONTROLE.</small></span
+          ></a
+        >
+        <div class="workspace">
+          <div class="avatar">B</div>
+          <div>
+            <strong>Barraca principal</strong
+            ><span>Dados cadastrados no sistema</span>
+          </div>
+        </div>
+        <p class="nav-label">OPERAÇÃO</p>
+        <nav aria-label="Menu principal">
+          <a href="index.html" aria-label="Visão geral"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" /></svg
+            ><span>Visão geral</span></a
+          ><a href="estoque.html" aria-label="Estoque"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="m3 7 9-4 9 4v10l-9 4-9-4Z M3 7l9 4 9-4 M12 11v10 M7 5l10 4"
+              /></svg
+            ><span>Estoque</span></a
+          ><a href="vendas.html" aria-label="Vendas"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3h2l3 12h11l2-8H6" />
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="18" cy="20" r="1" /></svg
+            ><span>Vendas</span></a
+          ><a
+            href="receitas.html"
+            aria-current="page"
+            aria-label="Fichas técnicas"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"
+              /></svg
+            ><span>Fichas técnicas</span></a
+          ><a href="agente.html" aria-label="Otto · assistente IA"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"
+              /></svg
+            ><span>Otto · assistente IA</span><span class="nav-tag">IA</span></a
+          >
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="tip">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 19C0 8 12 3 21 3c0 10-4 18-13 15m-3 3L16 9" />
+            </svg>
+            <h3>Cada ingrediente conta.</h3>
+            <p>Uma operação organizada começa com um estoque bem cuidado.</p>
+            <a href="estoque.html">Acompanhar estoque →</a>
+          </div>
+          <div class="profile">
+            <div class="avatar">DG</div>
+            <div>
+              <strong>Sua operação</strong><small>Painel operacional</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main class="main" id="conteudo">
+        <header class="topbar">
+          <div class="crumb">
+            Sua operação <span aria-hidden="true">/</span>
+            <strong>Fichas técnicas</strong>
+          </div>
+          <div class="top-meta">
+            <span>Organização que dá resultado</span
+            ><span class="demo-badge"
+              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+            >
+          </div>
+        </header>
+        <div class="content">
+          <section class="heading">
+            <div>
+              <p class="eyebrow">PAINEL DA OPERAÇÃO</p>
+              <h1>Fichas técnicas</h1>
+              <p class="subtext">
+                Composição e custos dos produtos cadastrados.
+              </p>
+            </div>
+            <div class="actions">
+              <span class="button">Período não selecionado</span
+              ><a class="button primary" href="estoque.html"
+                >Ver estoque
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14m-5-5 5 5-5 5" /></svg
+              ></a>
+            </div>
+          </section>
+          <div class="notice">
+            Quatro sabores previstos para a barraca, com fotografias externas de
+            referência. As imagens não são fotos dos seus produtos; fichas,
+            preços e estoque serão cadastrados depois.
+          </div>
+          <section
+            class="cards flavor-cards"
+            aria-label="Os quatro sabores da barraca"
+          >
+            <article class="panel recipe-card" id="sabor-vegetariana">
+              <div class="potato-photo">
+                <img
+                  src="assets/batatas/vegetariana.png"
+                  alt="Batata recheada com creme de brócolis, referência visual vegetariana"
+                  width="640"
+                  height="480"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="panel-body">
+                <div class="recipe-title"><h2>Vegetariana</h2></div>
+                <p>Brócolis, milho e queijo</p>
+                <div class="recipe-info">
+                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
+                </div>
+                <details class="photo-credit">
+                  <summary>Sobre a imagem</summary>
+                  <p>
+                    Referência com creme de brócolis; composição diferente da
+                    ficha prevista.
+                  </p>
+                  <a
+                    href="https://yatnamarayoga.blogspot.com/2018/09/batata-recheada-com-creme-de-brocolis.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Fonte: Yatna Yoga ↗</a
+                  >
+                </details>
+              </div>
+            </article>
+            <article class="panel recipe-card" id="sabor-strogonoff">
+              <div class="potato-photo">
+                <img
+                  src="assets/batatas/strogonoff-frango.jpg"
+                  alt="Batata recheada com strogonoff de frango e batata palha"
+                  width="640"
+                  height="480"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="panel-body">
+                <div class="recipe-title"><h2>Strogonoff de frango</h2></div>
+                <p>Frango ao molho cremoso</p>
+                <div class="recipe-info">
+                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
+                </div>
+                <details class="photo-credit">
+                  <summary>Sobre a imagem</summary>
+                  <p>Foto de referência de strogonoff de frango.</p>
+                  <a
+                    href="https://www.chesini.com.br/receita/batata-recheada-com-strogonoff-de-frango-chesini"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Fonte: Chesini ↗</a
+                  >
+                </details>
+              </div>
+            </article>
+            <article class="panel recipe-card" id="sabor-blumenau">
+              <div class="potato-photo">
+                <img
+                  src="assets/batatas/linguica-blumenau.jpg"
+                  alt="Batatas recheadas com linguiça Blumenau, miniatura do vídeo da receita"
+                  width="640"
+                  height="480"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="panel-body">
+                <div class="recipe-title"><h2>Linguiça Blumenau</h2></div>
+                <p>Linguiça Blumenau e queijo</p>
+                <div class="recipe-info">
+                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
+                </div>
+                <details class="photo-credit">
+                  <summary>Sobre a imagem</summary>
+                  <p>
+                    Foto da receita em vídeo; identificação da fonte preservada.
+                  </p>
+                  <a
+                    href="https://www.youtube.com/watch?v=UN5KNwvNXIs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Fonte: Nossas Receitas · YouTube ↗</a
+                  >
+                </details>
+              </div>
+            </article>
+            <article class="panel recipe-card" id="sabor-bolonhesa">
+              <div class="potato-photo">
+                <img
+                  src="assets/batatas/bolonhesa.png"
+                  alt="Batatas recheadas à bolonhesa, gratinadas com queijo e ervas"
+                  width="640"
+                  height="480"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="panel-body">
+                <div class="recipe-title"><h2>Bolonhesa</h2></div>
+                <p>Carne moída ao molho de tomate</p>
+                <div class="recipe-info">
+                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
+                </div>
+                <details class="photo-credit">
+                  <summary>Sobre a imagem</summary>
+                  <p>Foto de referência de batata recheada à bolonhesa.</p>
+                  <a
+                    href="https://vokare.com.br/receita-de-batata-recheada-a-bolonhesa/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Fonte: Vokare / Folha de Notícias ↗</a
+                  >
+                </details>
+              </div>
+            </article>
+          </section>
+          <footer class="footer">
+            <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
+            ><span>HTML + CSS · sem dados de exemplo</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
