@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import List, Literal
+from typing import List, Literal, Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,6 +54,9 @@ class Venda(Model):
 
 
 class Perda(Model):
+    produto_id: Optional[UUID] = None
+    turno_id: Optional[UUID] = None
+    idempotency_key: Optional[UUID] = None
     lote_id: UUID
     quantidade: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
     motivo: str = Field(min_length=3, max_length=500)
@@ -61,3 +64,11 @@ class Perda(Model):
 
 class Motivo(Model):
     motivo: str = Field(min_length=3, max_length=500)
+
+
+class PerdaReceita(Model):
+    produto_id: UUID
+    porcoes: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
+    motivo: str = Field(min_length=3, max_length=500)
+    turno_id: Optional[UUID] = None
+    idempotency_key: UUID

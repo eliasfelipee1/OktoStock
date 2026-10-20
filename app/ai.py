@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from app.db import connect
+from app.losses import report as loss_report
 from app.schemas import Model
 
 
@@ -77,6 +78,8 @@ def build_context(operation_id, history_days=7, horizon=3):
             (SELECT count(*) FROM produtos WHERE operacao_id=%s) AS produtos,
             (SELECT count(*) FROM lotes WHERE operacao_id=%s) AS lotes,
             (SELECT count(*) FROM vendas WHERE operacao_id=%s) AS vendas''', (operation_id,) * 4).fetchone()
+        loss_data = loss_report(db, operation_id, start, today - timedelta(days=1))
+        loss_data.pop('registros')  # Nao enviar nomes/IDs de responsaveis nem movimentos individuais.
     truncated = len(rows) > 100
     ingredients = []
     for row in rows[:100]:
@@ -97,11 +100,11 @@ def build_context(operation_id, history_days=7, horizon=3):
             'pendencias': [name for key, name in [('insumos', 'Cadastrar insumos'),
                 ('produtos', 'Cadastrar produtos e fichas tecnicas'), ('lotes', 'Registrar recebimentos, custos e validades'),
                 ('vendas', 'Registrar vendas para construir historico')] if counts[key] == 0],
-            'campos_ainda_nao_suportados': ['Custos adicionais e margem alvo', 'Perdas atribuidas por sabor',
+            'campos_ainda_nao_suportados': ['Custos adicionais e margem alvo', 
                 'Capacidade de armazenamento e minimo de compra', 'Alergenicos e fatores de correcao estruturados'],
             'gerado_em': clock['instante'], 'periodo': {'inicio': start, 'fim_exclusivo': today,
             'dias_completos': history_days, 'dias_cobertura': horizon},
-            'resumo': summary, 'insumos': ingredients, 'insumos_truncados': truncated,
+            'resumo': summary, 'perdas': loss_data, 'insumos': ingredients, 'insumos_truncados': truncated,
             'limite_insumos': 100,
             'metodo': 'Media de consumo por dias corridos completos, incluindo zeros. Estoque atual.',
             'limitacoes': ['Margem sobre ingredientes nao e lucro liquido.',

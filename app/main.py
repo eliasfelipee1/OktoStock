@@ -2,6 +2,8 @@
 import hashlib
 import json
 from collections import defaultdict
+from datetime import date
+from typing import Optional
 from decimal import Decimal
 from pathlib import Path
 from uuid import UUID
@@ -12,9 +14,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
 
-from app import ai
+from app import ai, losses
 from app.db import connect
-from app.schemas import Insumo, Motivo, Perda, Produto, Recebimento, Venda
+from app.schemas import Insumo, Motivo, Perda, PerdaReceita, Produto, Recebimento, Venda
 
 app = FastAPI(title='OktoStock', version='0.1.0')
 bearer = HTTPBearer()
@@ -145,16 +147,23 @@ def lots(u=Depends(user)):
 @app.post('/estoque/perdas')
 def loss(body: Perda, u=Depends(user)):
     roles(u, 'gerente', 'estoquista')
+    return losses.register(u, body)
+
+
+@app.post('/estoque/perdas/receita', status_code=201)
+def recipe_loss(body: PerdaReceita, u=Depends(user)):
+    roles(u, 'gerente', 'estoquista')
+    return losses.register(u, body, recipe=True)
+
+
+@app.get('/relatorios/perdas')
+def losses_report(inicio: Optional[date] = None, fim: Optional[date] = None,
+                  turno_id: Optional[UUID] = None, u=Depends(user)):
+    roles(u, 'gerente', 'estoquista', 'ia')
     with connect() as db:
-        lock_operation(db, u)
-        lot = db.execute('SELECT * FROM lotes WHERE id=%s AND operacao_id=%s FOR UPDATE', (body.lote_id, u['operacao_id'])).fetchone()
-        if not lot:
-            fail('LOTE_NAO_ENCONTRADO', 404)
-        if lot['saldo'] < body.quantidade:
-            fail('ESTOQUE_INSUFICIENTE')
-        db.execute('UPDATE lotes SET saldo=saldo-%s WHERE id=%s', (body.quantidade, lot['id']))
-        movement(db, u, lot, 'perda', -body.quantidade, reason=body.motivo)
-        return {'lote_id': lot['id'], 'saldo': lot['saldo'] - body.quantidade}
+        db.commit()
+        db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        return losses.report(db, u['operacao_id'], inicio, fim, turno_id)
 
 
 @app.post('/turnos', status_code=201)

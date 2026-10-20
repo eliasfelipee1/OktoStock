@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="OktoStock — gestão de estoque e operação para sua barraca. Interface preparada para dados cadastrados."
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Perdas · OktoStock</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+    <div class="layout">
+      <aside class="sidebar">
+        <a class="brand" href="index.html" aria-label="OktoStock início"
+          ><span class="logo">✳</span
+          ><span class="brand-name"
+            >okto<span style="font-weight: 400">stock</span
+            ><small>MENOS PERDA. MAIS CONTROLE.</small></span
+          ></a
+        >
+        <div class="workspace">
+          <div class="avatar">B</div>
+          <div>
+            <strong>Barraca principal</strong
+            ><span>Dados cadastrados no sistema</span>
+          </div>
+        </div>
+        <p class="nav-label">OPERAÇÃO</p>
+        <nav aria-label="Menu principal">
+          <a href="index.html" aria-label="Visão geral"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" /></svg
+            ><span>Visão geral</span></a
+          ><a href="estoque.html" aria-label="Estoque"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="m3 7 9-4 9 4v10l-9 4-9-4Z M3 7l9 4 9-4 M12 11v10 M7 5l10 4"
+              /></svg
+            ><span>Estoque</span></a
+          ><a href="vendas.html" aria-label="Vendas"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3h2l3 12h11l2-8H6" />
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="18" cy="20" r="1" /></svg
+            ><span>Vendas</span></a
+          ><a href="receitas.html" aria-label="Fichas técnicas"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"
+              /></svg
+            ><span>Fichas técnicas</span></a
+          ><a href="agente.html" aria-label="Otto · assistente IA"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"
+              /></svg
+            ><span>Otto · assistente IA</span><span class="nav-tag">IA</span></a
+          >
+          <a href="perdas.html" aria-label="Perdas" aria-current="page"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 10 17H2Z M12 9v4m0 3v1" /></svg
+            ><span>Perdas</span></a
+          >
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="tip">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 19C0 8 12 3 21 3c0 10-4 18-13 15m-3 3L16 9" />
+            </svg>
+            <h3>Cada ingrediente conta.</h3>
+            <p>Uma operação organizada começa com um estoque bem cuidado.</p>
+            <a href="estoque.html">Acompanhar estoque →</a>
+          </div>
+          <div class="profile">
+            <div class="avatar">DG</div>
+            <div>
+              <strong>Sua operação</strong><small>Painel operacional</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main class="main" id="conteudo">
+        <header class="topbar">
+          <div class="crumb">
+            Sua operação <span aria-hidden="true">/</span>
+            <strong>Perdas</strong>
+          </div>
+          <div class="top-meta">
+            <span>Organização que dá resultado</span
+            ><span class="demo-badge"
+              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+            >
+          </div>
+        </header>
+        <div class="content">
+          <section class="heading">
+            <div>
+              <p class="eyebrow">CONTROLE DE DESPERDÍCIO</p>
+              <h1>Perdas da operação</h1>
+              <p class="subtext">
+                Por receita, por ingrediente e no total do período.
+              </p>
+            </div>
+            <div class="actions">
+              <a class="button primary" href="#por-receita"
+                >Ver por receita ↓</a
+              >
+            </div>
+          </section>
+          <div class="notice">
+            O backend já calcula estes indicadores a partir dos registros. Esta
+            tela HTML/CSS aguarda integração com a API; os traços abaixo não
+            significam perda zero.
+          </div>
+          <div class="metrics">
+            <article class="metric highlight">
+              <div class="metric-top">Perda total em reais</div>
+              <div class="metric-value">—</div>
+              <p class="metric-foot">
+                Soma do custo histórico de todas as perdas
+              </p>
+            </article>
+            <article class="metric">
+              <div class="metric-top">Sobre o faturamento bruto</div>
+              <div class="metric-value">—</div>
+              <p class="metric-foot">Perdas ÷ faturamento × 100</p>
+            </article>
+            <article class="metric">
+              <div class="metric-top">Porções descartadas</div>
+              <div class="metric-value">—</div>
+              <p class="metric-foot">Somente perdas registradas em porções</p>
+            </article>
+            <article class="metric">
+              <div class="metric-top">Receita com maior perda</div>
+              <div class="metric-value">—</div>
+              <p class="metric-foot">Comparação por custo no período</p>
+            </article>
+          </div>
+          <div class="tabs">
+            <a href="#por-receita">Por receita</a
+            ><a href="#por-insumo">Por ingrediente</a
+            ><a href="#registros">Registros</a>
+          </div>
+          <section class="panel" id="por-receita">
+            <div class="panel-head">
+              <div>
+                <h2>Perdas de cada receita</h2>
+                <p>Nome e versão preservados no registro da perda</p>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Receita / sabor</th>
+                    <th>Versão</th>
+                    <th>Porções perdidas</th>
+                    <th>Quantidades por unidade</th>
+                    <th>Custo da perda</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="5" class="empty-state">
+                      Aguardando consulta aos registros do período. Perdas sem
+                      receita aparecerão em “Sem receita vinculada”.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel" id="por-insumo" style="margin-top: 24px">
+            <div class="panel-head">
+              <div>
+                <h2>Perdas por ingrediente</h2>
+                <p>
+                  Gramas, mililitros e unidades são apresentados separadamente
+                </p>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ingrediente</th>
+                    <th>Quantidade perdida</th>
+                    <th>Unidade</th>
+                    <th>Custo total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="4" class="empty-state">
+                      Os totais virão dos lotes e dos movimentos de perda
+                      cadastrados.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel" id="registros" style="margin-top: 24px">
+            <div class="panel-head">
+              <div>
+                <h2>Histórico e motivos</h2>
+                <p>Rastreabilidade por data, turno, lote e responsável</p>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Receita</th>
+                    <th>Insumo / lote</th>
+                    <th>Quantidade</th>
+                    <th>Motivo</th>
+                    <th>Custo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="6" class="empty-state">
+                      Aguardando integração do histórico de perdas.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div class="callout">
+            <h3>Registre a perda uma única vez.</h3>
+            <p>
+              Uma perda de porção completa já baixa seus ingredientes. Não
+              registre as mesmas quantidades novamente como perdas de insumos.
+              Alimentos baixados por uma venda também não devem ser descontados
+              outra vez.
+            </p>
+          </div>
+          <footer class="footer">
+            <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
+            ><span>HTML + CSS · sem dados de exemplo</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
