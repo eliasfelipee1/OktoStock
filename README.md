@@ -127,3 +127,9 @@ O backend do assistente **Otto** já está preparado em `app/ai.py`. Para ativar
 Adicionar a chave ativa a chamada no backend; o chat HTML permanece uma prévia até integrar a tela à API. Consulte [guia do frontend](docs/FRONTEND.md) e [configuração do agente](docs/IA.md). Testes do provedor são simulados, sem consumo real de API.
 
 O prompt do Otto está em `app/prompts/otto.txt`. O contexto consulta cadastros reais e informa pendências quando faltam registros. A especificação recebida está em `docs/OTTO_REQUISITOS.md`; ela não é usada como seed de receitas ou preços.
+
+## Perdas por receita e total
+
+Disponível no menu **Perdas**, com API para registrar perdas de ingredientes vinculadas à receita ou porções completas. O relatório retorna totais por receita, ingrediente, motivo e período. Otto também recebe esses dados.
+
+Execute `python -m scripts.migrate` para aplicar `002_perdas_receitas.sql`. Veja [guia de perdas](docs/PERDAS.md). A tela HTML/CSS mantém estados vazios até ser conectada à API; use `/docs` para cadastrar e consultar os dados reais.

@@ -35,3 +35,5 @@ Neste MVP, cadastre a unidade efetivamente consumida pela ficha. Se a compra for
 7. Separar credenciais de schema/runtime, implantar backup/restauração e acompanhar logs antes do ambiente compartilhado.
 
 Não altere migrations já aplicadas: crie `002_...sql` e rode o migrador. Evite editar saldo diretamente no pgAdmin, pois isso quebra a trilha de movimentações.
+
+Atualização: perdas por receita e total implementadas, com migration 002 e integração de agrupamentos no contexto do Otto. Leia `PERDAS.md` para distinguir descarte físico ainda não baixado de consumo já registrado em venda.

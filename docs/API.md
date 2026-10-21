@@ -51,3 +51,11 @@ Não acessar PostgreSQL diretamente nas telas. Para frontend em outra origem, DE
 `GET /ia/status`, `GET /ia/contexto` e `POST /ia/perguntar` aceitam apenas gerente/ia. Parâmetros, respostas e erros: veja `IA.md`. A chave do provedor é definida no backend; clientes usam o mesmo token individual de autenticação da API.
 
 O frontend estático é servido em `/painel/`, sem autenticação porque contém somente a estrutura visual e estados de espera, sem dados da operação. As rotas de dados continuam autenticadas.
+
+## Perdas por receita e total
+
+- `POST /estoque/perdas`: agora aceita receita, turno e chave de idempotência opcionais.
+- `POST /estoque/perdas/receita`: registra porções descartadas ainda não baixadas, com baixa FEFO atômica e idempotência obrigatória.
+- `GET /relatorios/perdas`: filtros `inicio`, `fim` e `turno_id`; retorna total em reais, porções, quantidades por unidade, agrupamentos por receita/insumo/motivo e percentuais.
+
+Detalhes, payloads e regra para evitar dupla baixa: `PERDAS.md`. Aplicar migration 002 antes de usar estas rotas ou o contexto de Otto atualizado.
