@@ -5,14 +5,14 @@ Dados simulados, criados a pedido do dono. Não representam vendas reais nem nú
 ## Conteúdo
 
 - Período histórico: 07 a 20/10/2026; estoque de abertura em 21/10/2026.
-- 5 sabores e 29 linhas de ficha técnica do catálogo didático Grupo01.
-- 15 insumos; conversão explícita de kg para g e l para ml, inclusive nos custos unitários.
-- 1.600 vendas, 3.200 porções, 1.600 pagamentos, 14 turnos fechados, 225 lotes e 210 perdas.
-- Receita bruta: R$ 111.040; quinta a domingo: R$ 83.280 (75%). Não é lucro.
+- 4 sabores — Linguiça Blumenau, Strogonoff de frango, Bolonhesa e Vegetariana — com 52 linhas de ficha técnica conforme `docs/OTTO_REQUISITOS.md` (`scripts/data/catalogo_okto.json`). Custos de insumos e preços de venda (R$ 36, 35, 36 e 32) são didáticos.
+- 30 insumos; conversão explícita de kg para g e l para ml, inclusive nos custos unitários.
+- 1.280 vendas, 3.200 porções, 1.280 pagamentos, 14 turnos fechados, 450 lotes e 420 perdas.
+- Receita bruta: R$ 111.680; quinta a domingo: R$ 83.760 (75%). Não é lucro.
 - Fim de semana de 9–11/10 tem mais movimento que 16–18/10; 12/10 também tem reforço em relação à segunda seguinte.
 - Cada lote concilia entrada, venda, perda e saldo. Perdas representam descarte independente de insumos não vendidos; não são baixadas de novo por receita.
 
-Os volumes e o mix fixo de sabores são hipóteses didáticas escolhidas para materializar as regras. A simulação não serve para medir preferência real por sabores. O script original de massa histórica não foi executado: ele apaga tabelas e usa uma estrutura diferente da API. Seu catálogo foi preservado em `scripts/data/catalogo_grupo01.json`. O schema usado pela API é `public`.
+Os volumes e o mix fixo de sabores são hipóteses didáticas escolhidas para materializar as regras. A simulação não serve para medir preferência real por sabores. O script original de massa histórica não foi executado: ele apaga tabelas e usa uma estrutura diferente da API. Seu catálogo de 5 sabores foi preservado em `scripts/data/catalogo_grupo01.json` apenas como histórico; a carga usa `catalogo_okto.json`. O schema usado pela API é `public`.
 
 ## Premissas do dono
 
@@ -37,7 +37,7 @@ python -m scripts.migrate
 python -m scripts.seed_okto
 ```
 
-A carga é transacional e usa um ID fixo. Nova execução reconhece a carga existente sem duplicar ou apagar registros; não atualiza uma carga anterior. Em banco com outras operações, recusa a carga. Não há TRUNCATE. O banco `okto_test` é separado e utilizado exclusivamente pelos testes.
+A carga é transacional e usa um ID fixo. Nova execução reconhece a carga existente sem duplicar ou apagar registros. Para substituir uma carga anterior (por exemplo, a de 5 sabores), use `python -m scripts.seed_okto --recriar`: apaga somente a operação simulada de ID fixo, na mesma transação, e carrega de novo. Em banco com outras operações, recusa a carga. Não há TRUNCATE. O banco `okto_test` é separado e utilizado exclusivamente pelos testes.
 
 Perguntas sugeridas: “Quais sabores mais venderam?”, “Qual a participação de quinta a domingo?”, “Como o feriado de 12 de outubro aparece no histórico?” e “O que falta para planejar os pré-preparos até quarta à noite?”.
 

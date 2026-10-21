@@ -54,8 +54,8 @@ def test_demo_seed_reconciles_sales_stock_and_seasonality(setup):
         totals = db.execute('''SELECT sum(total) AS receita,
             sum(total) FILTER(WHERE extract(isodow FROM criado_em)>=4) AS fortes,
             count(*) AS vendas FROM vendas''').fetchone()
-        assert totals['vendas'] == 1600
-        assert totals['receita'] == Decimal('111040')
+        assert totals['vendas'] == 1280
+        assert totals['receita'] == Decimal('111680')
         assert totals['fortes'] / totals['receita'] == Decimal('.75')
         assert db.execute('SELECT sum(quantidade) AS n FROM venda_itens').fetchone()['n'] == 3200
         assert not db.execute('''SELECT l.id FROM lotes l JOIN movimentacoes m ON m.lote_id=l.id
@@ -72,6 +72,12 @@ def test_demo_seed_reconciles_sales_stock_and_seasonality(setup):
             assert revenues[date(2026, 10, day)] > revenues[date(2026, 10, day+7)]
         assert db.execute('SELECT parametros FROM contextos_operacionais WHERE operacao_id=%s',
                           (OPERATION_ID,)).fetchone()['parametros']['publico_total_festa'] == 500000
+        names = [r['nome'] for r in db.execute('SELECT nome FROM produtos ORDER BY nome').fetchall()]
+        assert names == ['Bolonhesa', 'Linguiça Blumenau', 'Strogonoff de frango', 'Vegetariana']
+    assert seed('test-seed-token', recreate=True)['estado'] == 'recriado'
+    with connect() as db:
+        assert db.execute('SELECT count(*) AS n FROM produtos').fetchone()['n'] == 4
+        assert db.execute('SELECT count(*) AS n FROM vendas').fetchone()['n'] == 1280
 
 
 def test_dashboard_requires_auth_and_scopes_operation(setup):

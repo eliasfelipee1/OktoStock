@@ -1,11 +1,14 @@
 """Carga didática atômica, sem TRUNCATE; recusa bancos já povoados.
 
 Execute após migrations: python -m scripts.seed_okto.
+Para substituir uma carga anterior da demonstração: python -m scripts.seed_okto --recriar
+(apaga somente a operação simulada de ID fixo e a carrega de novo).
 O token administrativo é obtido de OKTO_DEMO_TOKEN, nunca impresso.
 """
 import hashlib
 import json
 import os
+import sys
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal as D
@@ -17,9 +20,9 @@ from psycopg.types.json import Jsonb
 from app.db import connect
 
 OPERATION_ID = UUID('078f3d48-9702-4c40-94a2-c07811202601')
-# Cada bloco vende o mesmo mix de 10 porções (R$ 347), permitindo 75% exatos.
+# Cada bloco vende o mesmo mix de 10 porções (R$ 349), permitindo 75% exatos.
 DAILY_BLOCKS = [10, 18, 36, 44, 40, 18, 12, 10, 16, 24, 32, 30, 16, 14]
-MIX = {'CAL': 3, 'FRA': 3, 'BAC': 2, 'CAR': 1, 'VEG': 1}
+MIX = {'LIN': 3, 'STR': 3, 'BOL': 2, 'VEG': 2}
 TZ = ZoneInfo('America/Sao_Paulo')
 START = date(2026, 10, 7)
 
@@ -28,10 +31,39 @@ def at(day, hour):
     return datetime.combine(day, time(hour), TZ)
 
 
-def seed(token):
-    catalog = json.loads((Path(__file__).parent / 'data/catalogo_grupo01.json').read_text())
+# Ordem respeita as chaves estrangeiras; tudo filtrado pela operação simulada.
+DEMO_TABLES = ['movimentacoes', 'perdas', 'pagamentos', 'venda_itens', 'vendas', 'turnos', 'lotes',
+               'ingredientes', 'produtos', 'insumos', 'auditoria', 'contextos_operacionais', 'usuarios']
+
+
+def remove_demo(db):
+    """Apaga a operação simulada e devolve o hash do token do gerente, para mantê-lo válido."""
+    config = db.execute('SELECT parametros FROM contextos_operacionais WHERE operacao_id=%s',
+                        (OPERATION_ID,)).fetchone()
+    if not config or config['parametros'].get('natureza_dados') != 'simulados':
+        raise RuntimeError('A operação de ID fixo não está marcada como simulada; nada foi apagado.')
+    owner = db.execute("SELECT token_hash FROM usuarios WHERE operacao_id=%s AND papel='gerente' "
+                       'ORDER BY nome LIMIT 1', (OPERATION_ID,)).fetchone()
+    for table in DEMO_TABLES:
+        if table in ('pagamentos', 'venda_itens'):
+            db.execute(f'DELETE FROM {table} WHERE venda_id IN (SELECT id FROM vendas WHERE operacao_id=%s)',
+                       (OPERATION_ID,))
+        else:
+            db.execute(f'DELETE FROM {table} WHERE operacao_id=%s', (OPERATION_ID,))
+    db.execute('DELETE FROM operacoes WHERE id=%s', (OPERATION_ID,))
+    return owner['token_hash'] if owner else None
+
+
+def seed(token, recreate=False):
+    catalog = json.loads((Path(__file__).parent / 'data/catalogo_okto.json').read_text(encoding='utf-8'))
     with connect() as db:
         db.execute('SELECT pg_advisory_xact_lock(728194)')
+        token_hash = hashlib.sha256(token.encode()).hexdigest() if token else None
+        if recreate and db.execute('SELECT 1 FROM operacoes WHERE id=%s', (OPERATION_ID,)).fetchone():
+            previous = remove_demo(db)
+            token_hash = token_hash or previous
+        if not token_hash:
+            raise RuntimeError('Defina OKTO_DEMO_TOKEN para criar o gerente da demonstração.')
         if db.execute('SELECT 1 FROM operacoes WHERE id=%s', (OPERATION_ID,)).fetchone():
             return {'estado': 'ja_carregado', 'operacao_id': str(OPERATION_ID)}
         if db.execute('SELECT 1 FROM operacoes LIMIT 1').fetchone():
@@ -40,7 +72,7 @@ def seed(token):
                    (OPERATION_ID, 'Okto — demonstração simulada 2026'))
         user = db.execute('INSERT INTO usuarios(operacao_id,nome,papel,token_hash) '
                           "VALUES(%s,'Dono da barraca (demo)','gerente',%s) RETURNING id",
-                          (OPERATION_ID, hashlib.sha256(token.encode()).hexdigest())).fetchone()['id']
+                          (OPERATION_ID, token_hash)).fetchone()['id']
         params = {
             'natureza_dados': 'simulados', 'periodo_historico': {'inicio': '2026-10-07', 'fim': '2026-10-20'},
             'publico_total_festa': 500000, 'fonte_publico': 'Premissa informada pelo dono; não verificada externamente',
@@ -53,11 +85,12 @@ def seed(token):
                            'regra': 'Concluir pré-preparos até quarta à noite; planejar compras antes disso',
                            'pendencias': ['Horário exato', 'Capacidade', 'Validade e conservação validadas por preparo'],
                            'execucao_registrada': False},
-            'premissas_simulacao': ['Mix fixo por bloco: 3 calabresa, 3 frango, 2 bacon, 1 carne seca e 1 vegetariana',
+            'sabores': [p[1] for p in catalog['produtos']],
+            'premissas_simulacao': ['Mix fixo por bloco: 3 Linguiça Blumenau, 3 Strogonoff de frango, 2 Bolonhesa e 2 Vegetariana',
                 'Volume de vendas é hipótese didática independente dos 500 mil visitantes',
                 'Descarte independente de insumo: 1% do consumo diário; não rendimento de limpeza',
                 'Recebimentos diários e validade de 2 dias são fictícios, não orientação sanitária',
-                'Custo e receita vieram do catálogo didático; embalagem, impostos e mão de obra não incluídos'],
+                'Fichas técnicas de docs/OTTO_REQUISITOS.md; custos e preços são didáticos; embalagem, impostos e mão de obra não incluídos'],
             'fornecedores': [{'nome': r[1], 'prazo_dias': int(r[4]), 'natureza': 'simulado'} for r in catalog['fornecedores']],
             'previsao': 'Padrão informado e cenário didático; não modelo preditivo validado',
         }
@@ -135,13 +168,15 @@ def seed(token):
             balance = qty*D(20)+ingredients[ingredient]['minimum']
             lot_for(ingredient, date(2026, 10, 21), balance, balance)
         db.execute('INSERT INTO auditoria(operacao_id,usuario_id,acao,dados) VALUES(%s,%s,%s,%s)',
-                   (OPERATION_ID, user, 'CARGA_DEMONSTRACAO', Jsonb({'fonte': 'catálogo Grupo01 + premissas do dono',
+                   (OPERATION_ID, user, 'CARGA_DEMONSTRACAO', Jsonb({'fonte': 'fichas dos 4 sabores + premissas do dono',
                     'periodo': params['periodo_historico'], 'simulado': True})))
-    return {'estado': 'criado', 'operacao_id': str(OPERATION_ID), 'porcoes': 3200, 'vendas': 1600}
+    return {'estado': 'recriado' if recreate else 'criado', 'operacao_id': str(OPERATION_ID),
+            'porcoes': 3200, 'vendas': 1280}
 
 
 if __name__ == '__main__':
     token = os.environ.get('OKTO_DEMO_TOKEN')
-    if not token:
+    recreate = '--recriar' in sys.argv
+    if not token and not recreate:
         raise SystemExit('Defina OKTO_DEMO_TOKEN localmente antes da carga.')
-    print(json.dumps(seed(token), ensure_ascii=False))
+    print(json.dumps(seed(token or None, recreate=recreate), ensure_ascii=False))

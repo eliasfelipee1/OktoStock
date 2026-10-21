@@ -26,7 +26,7 @@ Neste MVP, cadastre a unidade efetivamente consumida pela ficha. Se a compra for
 
 ## Próximas entregas sugeridas
 
-1. Validar as fichas reais, unidades, rendimentos e preços dos cinco sabores com o responsável pela barraca.
+1. Validar as fichas reais, unidades, rendimentos e preços dos quatro sabores (Linguiça Blumenau, Strogonoff de frango, Bolonhesa e Vegetariana) com o responsável pela barraca.
 2. Adicionar autenticação interativa e duração/revogação de sessões para o produto final.
 3. Implementar adicionais e descontos com snapshots, composição de consumo e validação do total.
 4. Acrescentar fornecedores/apresentações, conversão de compra e produção, com rastreabilidade entre lotes.
