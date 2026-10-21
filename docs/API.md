@@ -59,3 +59,7 @@ O frontend estático é servido em `/painel/`, sem autenticação porque contém
 - `GET /relatorios/perdas`: filtros `inicio`, `fim` e `turno_id`; retorna total em reais, porções, quantidades por unidade, agrupamentos por receita/insumo/motivo e percentuais.
 
 Detalhes, payloads e regra para evitar dupla baixa: `PERDAS.md`. Aplicar migration 002 antes de usar estas rotas ou o contexto de Otto atualizado.
+
+## Planejamento de pré-assadas
+
+`POST /planejamento/pre-assadas` — gerente/ia. Calculadora determinística de uma fornada, sem gravação ou previsão automática. Os nove parâmetros estão no Swagger; campos ausentes retornam `dados_pendentes` e quantidade `null`. Limites: tempo, capacidade livre do forno, insumos e espaço disponível. Contrato e pressupostos em `FOCO_PROJETO.md`. Integração às futuras tabelas ainda pendente.

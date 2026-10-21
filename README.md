@@ -133,3 +133,13 @@ O prompt do Otto está em `app/prompts/otto.txt`. O contexto consulta cadastros 
 Disponível no menu **Perdas**, com API para registrar perdas de ingredientes vinculadas à receita ou porções completas. O relatório retorna totais por receita, ingrediente, motivo e período. Otto também recebe esses dados.
 
 Execute `python -m scripts.migrate` para aplicar `002_perdas_receitas.sql`. Veja [guia de perdas](docs/PERDAS.md). A tela HTML/CSS mantém estados vazios até ser conectada à API; use `/docs` para cadastrar e consultar os dados reais.
+
+## Foco: pré-assamento, reposição e perdas
+
+O decisor é o dono da barraca. “Pré-batata” significa **batata pré-assada**. A tela Produção e a calculadora `POST /planejamento/pre-assadas` organizam essa decisão sem inventar demanda ou gravar produção. Nenhuma tabela nova foi criada nesta etapa: o outro dev entregará os registros de sábado e o esquema será combinado depois.
+
+- [Recorte e regras da operação](docs/FOCO_PROJETO.md)
+- [Contrato proposto para os dados de sábado](docs/CONTRATO_DADOS_SABADO.md)
+- [Roteiro honesto para a banca](docs/ROTEIRO_BANCA.md)
+
+A produção que transforma batata crua em lotes pré-assados ainda precisa ser implementada antes de usar esse fluxo no estoque real. O módulo atual de perdas não deve baixar de novo ingredientes já consumidos por venda ou produção.
