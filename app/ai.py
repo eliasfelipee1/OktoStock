@@ -28,8 +28,8 @@ def error(code, status):
 
 
 def configuration():
-    return {'nome': 'Otto', 'configurado': bool(os.getenv('OPENAI_API_KEY', '').strip()),
-            'provedor': 'openai', 'modelo': os.getenv('AI_MODEL', 'gpt-4.1-mini'),
+    return {'nome': 'Otto', 'configurado': bool(os.getenv('ANTHROPIC_API_KEY', '').strip()),
+            'provedor': 'anthropic', 'modelo': os.getenv('AI_MODEL', 'claude-sonnet-4-6'),
             'modo': 'somente_leitura'}
 
 
@@ -113,19 +113,19 @@ def build_context(operation_id, history_days=7, horizon=3):
 
 
 def answer(question, context):
-    key = os.getenv('OPENAI_API_KEY', '').strip()
+    key = os.getenv('ANTHROPIC_API_KEY', '').strip()
     if not key:
         error('IA_NAO_CONFIGURADA', 503)
-    payload = {'model': configuration()['modelo'], 'instructions': SYSTEM_PROMPT,
-               'input': json.dumps({'pergunta': question, 'contexto': context}, default=str, ensure_ascii=False),
-               'max_output_tokens': 1200, 'store': False}
-    if len(payload['input']) > 80000:
+    content = json.dumps({'pergunta': question, 'contexto': context}, default=str, ensure_ascii=False)
+    if len(content) > 80000:
         error('CONTEXTO_IA_MUITO_GRANDE', 422)
+    payload = {'model': configuration()['modelo'], 'system': SYSTEM_PROMPT,
+               'messages': [{'role': 'user', 'content': content}], 'max_tokens': 1200}
     try:
         # URL fixa: a chave nunca e enviada a um host indicado pelo cliente.
         with httpx.Client(timeout=httpx.Timeout(30.0, connect=5.0), follow_redirects=False) as client:
-            response = client.post('https://api.openai.com/v1/responses',
-                headers={'Authorization': f'Bearer {key}'}, json=payload)
+            response = client.post('https://api.anthropic.com/v1/messages',
+                headers={'x-api-key': key, 'anthropic-version': '2023-06-01'}, json=payload)
     except httpx.TimeoutException:
         error('IA_TEMPO_ESGOTADO', 504)
     except httpx.RequestError:
@@ -138,11 +138,10 @@ def answer(question, context):
         error('IA_INDISPONIVEL', 502)
     try:
         data = response.json()
-        if data.get('status') != 'completed':
+        if data.get('stop_reason') != 'end_turn':
             error('IA_RESPOSTA_INCOMPLETA', 502)
-        text = '\n'.join(part['text'] for item in data.get('output', [])
-            if item.get('type') == 'message' for part in item.get('content', [])
-            if part.get('type') == 'output_text' and isinstance(part.get('text'), str)).strip()
+        text = '\n'.join(part['text'] for part in data.get('content', [])
+            if part.get('type') == 'text' and isinstance(part.get('text'), str)).strip()
     except (ValueError, TypeError, KeyError, AttributeError):
         error('IA_RESPOSTA_INVALIDA', 502)
     if not text:

@@ -59,4 +59,4 @@ O contrato usa porções-base equivalentes (uma base para uma batata recheada), 
 
 `pre_assadas_utilizaveis` deve excluir vencidas, reservadas para outras demandas e lotes que não possam ser usados no horizonte. `espaco_disponivel_porcoes` deve considerar o que já está ocupado/reservado. Não há calendário de fornadas sucessivas nesta versão. A demanda e validade são fornecidas na entrada: não são estimadas ou verificadas pelo cálculo.
 
-Otto explica a decisão e as pendências. O cálculo funciona sem chave OpenAI; sua conexão automática com as fontes de produção ainda depende das tabelas. Não apresentar esta calculadora como previsão treinada ou como automação da cozinha.
+Otto explica a decisão e as pendências. O cálculo funciona sem chave Anthropic; sua conexão automática com as fontes de produção ainda depende das tabelas. Não apresentar esta calculadora como previsão treinada ou como automação da cozinha.

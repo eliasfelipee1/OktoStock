@@ -118,7 +118,7 @@ Referências técnicas: [transações Psycopg](https://www.psycopg.org/psycopg3/
 
 Frontend criado em **HTML e CSS**, com cinco telas responsivas: visão geral, estoque, vendas, fichas técnicas e assistente. Abra `frontend/index.html` diretamente ou, com a API ativa, acesse [painel](http://127.0.0.1:8000/painel/). As telas não exibem dados fictícios: mostram estados de espera pela integração. Continuam sem JavaScript e sem consultas reais ao banco pelo navegador.
 
-O backend do assistente **Otto** já está preparado em `app/ai.py`. Para ativar posteriormente, defina `OPENAI_API_KEY` no `.env` e reinicie a API. O modelo é configurável por `AI_MODEL` (padrão `gpt-4.1-mini`). Não coloque a chave no frontend nem no Git.
+O backend do assistente **Otto** já está preparado em `app/ai.py`. Para ativar posteriormente, defina `ANTHROPIC_API_KEY` no `.env` e reinicie a API. O modelo é configurável por `AI_MODEL` (padrão `claude-sonnet-4-6`). Não coloque a chave no frontend nem no Git.
 
 - `GET /ia/status`: presença de configuração.
 - `GET /ia/contexto`: indicadores e sugestões de compra; funciona sem chave.
