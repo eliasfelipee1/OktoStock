@@ -32,7 +32,7 @@ def at(day, hour):
 
 
 # Ordem respeita as chaves estrangeiras; tudo filtrado pela operação simulada.
-DEMO_TABLES = ['movimentacoes', 'perdas', 'pagamentos', 'venda_itens', 'vendas', 'turnos', 'lotes',
+DEMO_TABLES = ['movimentacoes', 'contagens', 'perdas', 'pagamentos', 'venda_itens', 'vendas', 'turnos', 'lotes',
                'ingredientes', 'produtos', 'insumos', 'auditoria', 'contextos_operacionais', 'usuarios']
 
 

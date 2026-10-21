@@ -2,6 +2,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from app.db import connect
+from scripts.seed_okto import seed
 from test_api import build
 
 
@@ -80,3 +81,20 @@ def test_suggestions_put_never_counted_lots_first(setup):
                                        'idempotency_key': str(uuid4())})
     order = [r['lote_id'] for r in c.get('/estoque/contagens/sugestoes').json()]
     assert order == [pending, counted]
+
+
+def test_demo_seed_recreate_removes_cycle_counts(setup):
+    c = setup
+    with connect() as db:
+        db.execute('DELETE FROM usuarios')
+        db.execute('DELETE FROM operacoes')
+    assert seed('test-seed-token')['estado'] == 'criado'
+    c.headers['Authorization'] = 'Bearer test-seed-token'
+    lot = next(l for l in c.get('/estoque/lotes').json() if Decimal(str(l['saldo'])) >= 2)
+    body = {'lote_id': lot['id'], 'saldo_contado': str(Decimal(str(lot['saldo'])) - 1),
+            'motivo': 'Contagem na base de demonstracao', 'idempotency_key': str(uuid4())}
+    assert c.post('/estoque/contagens', json=body).status_code == 201
+    assert seed('test-seed-token', recreate=True)['estado'] == 'recriado'
+    with connect() as db:
+        assert db.execute('SELECT count(*) AS n FROM contagens').fetchone()['n'] == 0
+        assert db.execute("SELECT count(*) AS n FROM movimentacoes WHERE tipo='ajuste'").fetchone()['n'] == 0
