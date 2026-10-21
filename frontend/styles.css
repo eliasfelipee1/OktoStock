@@ -1177,3 +1177,11 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+/* Dados da API, preservando o layout do painel. */
+.live-panel { margin-bottom: 24px; }
+.live-recipes { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-items: start; }
+#live-content .metric-value { font-size: clamp(1.3rem, 2vw, 2rem); }
+#panel-login { margin-bottom: 24px; }
+#panel-login input { padding: 12px; margin: 8px; max-width: 100%; }
+[hidden] { display: none !important; }

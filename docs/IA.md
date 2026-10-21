@@ -1,6 +1,6 @@
 # Otto — backend preparado
 
-A integração inicial usa a Messages API da Anthropic. O frontend é HTML/CSS estático, sem dados demonstrativos: não envia perguntas nem lê o estado real da chave. Os endpoints abaixo já podem ser usados pelo Swagger ou por um cliente autorizado.
+A integração inicial usa a Messages API da Anthropic. A tela do Otto consulta a API com token de usuário e envia perguntas. As demais telas permanecem estáticas. A base okto contém dados simulados identificados no contexto. Os endpoints abaixo já podem ser usados pelo Swagger ou por um cliente autorizado.
 
 ## Ativar depois
 
@@ -19,12 +19,12 @@ AI_MODEL=claude-sonnet-4-6
 ```json
 {
   "pergunta": "Quais ingredientes precisam de reposição para os próximos três dias?",
-  "dias_historico": 7,
+  "dias_historico": 14,
   "dias_cobertura": 3
 }
 ```
 
-`configurado: true` indica somente presença de chave; não valida saldo, permissão do modelo nem conexão com o provedor. As chamadas reais usam a conta de API configurada. Nenhuma chamada real foi feita durante a implementação: os testes usam respostas simuladas.
+`configurado: true` indica somente presença de chave; não valida saldo, permissão do modelo nem conexão com o provedor. As chamadas reais usam a conta de API configurada. Os testes automatizados usam respostas simuladas. A configuração local também foi validada com chamada real à Anthropic em 21/10/2026.
 
 ## Rotas
 
@@ -77,3 +77,5 @@ Referência usada: [Messages API — documentação oficial Anthropic](https://p
 O texto completo fornecido pelo usuário está em `OTTO_REQUISITOS.md`, com o nome atualizado para Otto. Ele descreve também módulos futuros: custos adicionais, fatores de correção e restrições do fornecedor ainda precisam de estrutura própria. Otto deve declarar essas limitações; não simular registros nem afirmar que executou alterações. Nenhuma receita do documento foi cadastrada automaticamente.
 
 Atualização: perdas por receita e total implementadas, com migration 002 e integração de agrupamentos no contexto do Otto. Leia `PERDAS.md` para distinguir descarte físico ainda não baixado de consumo já registrado em venda.
+
+O contexto inclui `operacao` com premissas, vendas por dia, ranking de porções e preferência do relatório dominical. Veja [base okto](DEMONSTRACAO_OKTO.md).

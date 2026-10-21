@@ -143,7 +143,7 @@ def test_frontend_served_without_database():
         for page in ['index', 'estoque', 'vendas', 'receitas', 'agente']:
             r = c.get(f'/painel/{page}.html')
             assert r.status_code == 200
-            assert '<script' not in r.text.lower()
+            assert ('agente.js' if page == 'agente' else 'painel.js') in r.text
         assert c.get('/painel/styles.css').status_code == 200
         assert c.get('/painel/.env').status_code == 404
 

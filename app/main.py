@@ -1,5 +1,6 @@
 """API do MVP: nenhuma credencial PostgreSQL deve ir para o frontend."""
 import hashlib
+import os
 import json
 from collections import defaultdict
 from datetime import date
@@ -8,7 +9,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -20,6 +21,15 @@ from app.schemas import Insumo, Motivo, Perda, PerdaReceita, Produto, Recebiment
 
 app = FastAPI(title='OktoStock', version='0.1.0')
 bearer = HTTPBearer()
+
+
+@app.middleware('http')
+async def refresh_panel_assets(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith('/painel/') or request.url.path == '/dashboard':
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
 
 
 def fail(code, status=409):
@@ -347,8 +357,25 @@ def ai_status(u=Depends(user)):
     return ai.configuration()
 
 
+class PreferenciaRelatorio(ai.Model):
+    deseja_receber: bool
+
+
+@app.put('/ia/preferencias/relatorio-semanal')
+def report_preference(body: PreferenciaRelatorio, u=Depends(user)):
+    roles(u, 'gerente')
+    with connect() as db:
+        db.execute("""INSERT INTO contextos_operacionais(operacao_id,deseja_relatorio_domingo)
+            VALUES(%s,%s) ON CONFLICT(operacao_id) DO UPDATE
+            SET deseja_relatorio_domingo=EXCLUDED.deseja_relatorio_domingo, atualizado_em=now()""",
+            (u['operacao_id'], body.deseja_receber))
+        audit(db, u, 'PREFERENCIA_RELATORIO', {'deseja_receber': body.deseja_receber})
+    return {'deseja_receber': body.deseja_receber, 'envio_automatico_ativo': False,
+            'mensagem': 'Preferência salva. Horário, canal e serviço de envio ainda precisam ser configurados.'}
+
+
 @app.get('/ia/contexto')
-def ai_context(dias_historico: int = Query(7, ge=1, le=90),
+def ai_context(dias_historico: int = Query(14, ge=1, le=90),
                dias_cobertura: int = Query(3, ge=1, le=30), u=Depends(user)):
     roles(u, 'gerente', 'ia')
     return ai.build_context(u['operacao_id'], dias_historico, dias_cobertura)
@@ -361,6 +388,37 @@ def ai_question(body: ai.Question, u=Depends(user)):
         fail('IA_NAO_CONFIGURADA', 503)
     context = ai.build_context(u['operacao_id'], body.dias_historico, body.dias_cobertura)
     return ai.answer(body.pergunta, context)
+
+
+@app.get('/dashboard')
+def dashboard_data(pagina: int = Query(1, ge=1), u=Depends(user)):
+    roles(u, 'gerente', 'ia')
+    from app.dashboard import load
+    return load(u['operacao_id'], pagina)
+
+
+@app.get('/demo/dados', include_in_schema=False)
+def local_demo_data(request: Request, response: Response, pagina: int = Query(1, ge=1)):
+    # Apenas leitura da operação explicitamente simulada, na instalação local.
+    from app.dashboard import load
+    local_hosts = {'127.0.0.1', 'localhost', '::1'}
+    origin = request.headers.get('origin')
+    configured = os.getenv('LOCAL_DEMO_OPERATION_ID')
+    if (not configured or not request.client or request.client.host not in local_hosts
+            or request.url.hostname not in local_hosts
+            or (origin and origin != str(request.base_url).rstrip('/'))
+            or request.headers.get('sec-fetch-site') == 'cross-site'):
+        fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
+    try:
+        operation_id = UUID(configured)
+    except ValueError:
+        fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
+    with connect() as db:
+        config = db.execute("SELECT parametros FROM contextos_operacionais WHERE operacao_id=%s", (operation_id,)).fetchone()
+        if not config or config['parametros'].get('natureza_dados') != 'simulados':
+            fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
+    response.headers['Cache-Control'] = 'no-store'
+    return load(operation_id, pagina)
 
 
 app.mount('/painel', StaticFiles(directory=Path(__file__).resolve().parents[1] / 'frontend', html=True), name='painel')

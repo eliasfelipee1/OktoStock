@@ -10,13 +10,14 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from app.db import connect
+from app.operation_context import read as read_operation_context
 from app.losses import report as loss_report
 from app.schemas import Model
 
 
 class Question(Model):
     pergunta: str = Field(min_length=3, max_length=2000)
-    dias_historico: int = Field(default=7, ge=1, le=90)
+    dias_historico: int = Field(default=14, ge=1, le=90)
     dias_cobertura: int = Field(default=3, ge=1, le=30)
 
 
@@ -33,7 +34,7 @@ def configuration():
             'modo': 'somente_leitura'}
 
 
-def build_context(operation_id, history_days=7, horizon=3):
+def build_context(operation_id, history_days=14, horizon=3):
     """Uma fotografia consistente, sem usuarios, pagamentos individuais ou tokens."""
     with connect() as db:
         db.commit()  # connect configura TimeZone; inicia agora uma transacao somente leitura.
@@ -79,6 +80,7 @@ def build_context(operation_id, history_days=7, horizon=3):
             (SELECT count(*) FROM lotes WHERE operacao_id=%s) AS lotes,
             (SELECT count(*) FROM vendas WHERE operacao_id=%s) AS vendas''', (operation_id,) * 4).fetchone()
         loss_data = loss_report(db, operation_id, start, today - timedelta(days=1))
+        operation_context = read_operation_context(db, operation_id, start, today)
         loss_data.pop('registros')  # Nao enviar nomes/IDs de responsaveis nem movimentos individuais.
     truncated = len(rows) > 100
     ingredients = []
@@ -93,7 +95,7 @@ def build_context(operation_id, history_days=7, horizon=3):
             'abaixo_minimo': row['saldo_utilizavel'] < row['estoque_minimo']})
     summary['margem_ingredientes'] = summary['receita'] - summary['custo_ingredientes_consumidos']
     summary['custo_perdas_independentes'] = losses
-    return {'agente': 'Otto', 'cadastros': counts,
+    return {'agente': 'Otto', 'operacao': operation_context, 'cadastros': counts,
             'estado_dados': 'sem_cadastros' if not any(counts.values()) else 'com_cadastros',
             'sem_vendas_no_periodo': summary['vendas_confirmadas'] + summary['vendas_estornadas'] == 0,
             'produtos': products[:100], 'fichas': recipes, 'produtos_truncados': len(products) > 100,
@@ -146,7 +148,10 @@ def answer(question, context):
         error('IA_RESPOSTA_INVALIDA', 502)
     if not text:
         error('IA_RESPOSTA_VAZIA', 502)
-    return {'agente': 'Otto', 'resposta': text, 'modelo': configuration()['modelo'], 'modo': 'somente_leitura',
+    report = context.get('operacao', {}).get('relatorio_semanal', {})
+    if report.get('pergunta') and report['pergunta'] not in text:
+        text += '\n\n' + report['pergunta']
+    return {'agente': 'Otto', 'relatorio_semanal': report, 'resposta': text, 'modelo': configuration()['modelo'], 'modo': 'somente_leitura',
             'periodo': context['periodo'], 'gerado_em': context['gerado_em'],
             'fontes': ['vendas agregadas', 'lotes por insumo', 'movimentacoes agregadas'],
             'insumos_truncados': context['insumos_truncados']}

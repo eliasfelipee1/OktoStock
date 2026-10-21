@@ -108,7 +108,7 @@ Cobertura: FEFO, custo histórico, rollback, venda duplicada e concorrente, disp
 
 Implementado: insumos, ficha técnica por produto/versão, lotes, recebimento, turnos, venda com pagamentos informados, FEFO, perdas, estorno interno, disponibilidade, relatórios e tokens por papel/operação.
 
-Ainda não implementado: integração dinâmica do frontend, login interativo, adicionais, descontos, conversão de embalagens, produção de insumos preparados, pedidos de compra, confirmação de pagamentos no provedor, devolução financeira automática, conciliação de caixa completa, sincronização offline e modelos preditivos treinados. Os endpoints rejeitam campos desconhecidos para não ignorar recursos ainda indisponíveis.
+Ainda não implementado: fluxos de cadastro e edição pelo frontend, login interativo, adicionais, descontos, conversão de embalagens, produção de insumos preparados, pedidos de compra, confirmação de pagamentos no provedor, devolução financeira automática, conciliação de caixa completa, sincronização offline e modelos preditivos treinados. Os endpoints rejeitam campos desconhecidos para não ignorar recursos ainda indisponíveis.
 
 Esta base é para desenvolvimento do MVP. Antes de exposição pública, separar usuário de migrations do usuário runtime, configurar HTTPS, gestão de identidade/expiração de credenciais, limites de requisição, backups e observabilidade. O banco não deve ser acessível pelos frontends: as permissões por barraca são aplicadas pela API, sem RLS nesta versão. Relatórios ainda não têm paginação/filtros de período; devem recebê-los antes de grande volume.
 
@@ -116,7 +116,7 @@ Referências técnicas: [transações Psycopg](https://www.psycopg.org/psycopg3/
 
 ## Frontend e assistente IA
 
-Frontend criado em **HTML e CSS**, com cinco telas responsivas: visão geral, estoque, vendas, fichas técnicas e assistente. Abra `frontend/index.html` diretamente ou, com a API ativa, acesse [painel](http://127.0.0.1:8000/painel/). As telas não exibem dados fictícios: mostram estados de espera pela integração. Continuam sem JavaScript e sem consultas reais ao banco pelo navegador.
+Frontend criado em **HTML e CSS**, com cinco telas responsivas: visão geral, estoque, vendas, fichas técnicas e assistente. Abra `frontend/index.html` diretamente ou, com a API ativa, acesse [painel](http://127.0.0.1:8000/painel/). A tela do Otto consulta a API com autenticação. Visão geral, estoque, vendas, receitas, perdas e planejamento também consultam a API. A base de demonstração é identificada como simulada.
 
 O backend do assistente **Otto** já está preparado em `app/ai.py`. Para ativar posteriormente, defina `ANTHROPIC_API_KEY` no `.env` e reinicie a API. O modelo é configurável por `AI_MODEL` (padrão `claude-sonnet-4-6`). Não coloque a chave no frontend nem no Git.
 
@@ -124,7 +124,7 @@ O backend do assistente **Otto** já está preparado em `app/ai.py`. Para ativar
 - `GET /ia/contexto`: indicadores e sugestões de compra; funciona sem chave.
 - `POST /ia/perguntar`: pergunta com contexto autorizado; requer chave válida e token gerente/ia.
 
-Adicionar a chave ativa a chamada no backend; o chat HTML permanece uma prévia até integrar a tela à API. Consulte [guia do frontend](docs/FRONTEND.md) e [configuração do agente](docs/IA.md). Testes do provedor são simulados, sem consumo real de API.
+Adicionar a chave ativa a chamada no backend; a tela do Otto usa token de usuário para consultar a operação e enviar perguntas. Consulte [guia do frontend](docs/FRONTEND.md) e [configuração do agente](docs/IA.md). Testes do provedor são simulados, sem consumo real de API.
 
 O prompt do Otto está em `app/prompts/otto.txt`. O contexto consulta cadastros reais e informa pendências quando faltam registros. A especificação recebida está em `docs/OTTO_REQUISITOS.md`; ela não é usada como seed de receitas ou preços.
 
@@ -143,3 +143,7 @@ O decisor é o dono da barraca. “Pré-batata” significa **batata pré-assada
 - [Roteiro honesto para a banca](docs/ROTEIRO_BANCA.md)
 
 A produção que transforma batata crua em lotes pré-assados ainda precisa ser implementada antes de usar esse fluxo no estoque real. O módulo atual de perdas não deve baixar de novo ingredientes já consumidos por venda ou produção.
+
+## Base de demonstração okto
+
+Carga simulada e contexto operacional agora disponíveis, com 75% da receita de quinta a domingo, reforço no feriado e prazo de pré-preparo. A tela do Otto está conectada à API e permite registrar interesse no relatório de domingo (sem envio automático). Consulte [instruções e limitações](docs/DEMONSTRACAO_OKTO.md). O agente usa `frontend/agente.js`; as demais telas carregam dados com `frontend/painel.js`.

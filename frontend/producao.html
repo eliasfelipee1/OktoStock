@@ -101,7 +101,7 @@
           <div class="top-meta">
             <span>Organização que dá resultado</span
             ><span class="demo-badge"
-              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+              ><span class="dot"></span> CONSULTANDO DADOS</span
             >
           </div>
         </header>
@@ -115,102 +115,21 @@
               </p>
             </div>
           </section>
-          <div class="notice">
-            Aguardando integração dos dados de produção. O cálculo no backend já
-            informa pendências e limites; esta tela não consulta o banco.
-          </div>
-          <div class="metrics">
-            <article class="metric highlight">
-              <div class="metric-top">Pré-assadas utilizáveis</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">
-                Disponíveis para o horizonte de atendimento
-              </p>
-            </article>
-            <article class="metric">
-              <div class="metric-top">Em preparo no prazo</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">Não inclui uma nova fornada</p>
-            </article>
-            <article class="metric">
-              <div class="metric-top">Demanda prevista</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">Com fonte e período identificados</p>
-            </article>
-            <article class="metric">
-              <div class="metric-top">Próxima fornada</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">Depende de tempo, capacidade e insumos</p>
-            </article>
-          </div>
-          <div class="two-cols">
-            <section class="panel">
-              <div class="panel-head"><h2>Antes de decidir</h2></div>
-              <div class="panel-body">
-                <ul class="status-list">
-                  <li>
-                    Quantas porções devem ser atendidas?<span>Pendente</span>
-                  </li>
-                  <li>
-                    Quantas bases estarão utilizáveis a tempo?<span
-                      >Pendente</span
-                    >
-                  </li>
-                  <li>
-                    Quanto cabe no forno e no armazenamento?<span
-                      >Pendente</span
-                    >
-                  </li>
-                  <li>
-                    Qual o tempo até disponibilizar a fornada?<span
-                      >Pendente</span
-                    >
-                  </li>
-                </ul>
-                <div class="callout">
-                  <h3>Sem dados, sem quantidade inventada.</h3>
-                  <p>
-                    Otto deve explicar a informação que falta e a restrição
-                    encontrada. A decisão de iniciar a fornada continua com o
-                    dono.
-                  </p>
-                </div>
-              </div>
-            </section>
-            <section class="panel ai-panel">
-              <div class="panel-head"><h2>Produção e perdas, juntas.</h2></div>
-              <div class="panel-body">
-                <p class="ai-intro">
-                  A sobra ainda utilizável não é descarte. Batata pré-assada sem
-                  recheio é uma base comum, não uma perda de receita completa.
-                </p>
-                <div class="ai-item">
-                  <div>
-                    <strong>Preserve a origem do descarte</strong>
-                    <p>
-                      Etapa, lote, quantidade e motivo precisam acompanhar o
-                      registro.
-                    </p>
-                  </div>
-                </div>
-                <a class="button" href="perdas.html">Acompanhar perdas →</a>
-              </div>
-            </section>
-          </div>
-          <div class="callout">
-            <h3>Um sinal de movimento não é uma venda garantida.</h3>
-            <p>
-              Programação de eventos, relatos de fila e consumo por horário
-              precisam ser relacionados à localização da barraca. Os dados de
-              sábado ainda serão integrados.
-            </p>
-          </div>
+          <div class="notice" id="connection-status" role="status">Carregando dados da operação…</div>
+          <form id="panel-login" class="panel panel-body" hidden>
+            <label for="panel-token">Token de usuário do OktoStock</label>
+            <input id="panel-token" type="password" autocomplete="off" required />
+            <button class="button primary" type="submit">Conectar</button>
+          </form>
+          <div id="live-content" aria-live="polite"></div>
+          <noscript>Ative o JavaScript para consultar os registros da operação.</noscript>
           <footer class="footer">
             <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
-            ><span>HTML + CSS · sem dados de exemplo</span>
+            ><span>Dados consultados no PostgreSQL</span>
           </footer>
         </div>
       </main>
     </div>
+    <script src="painel.js" defer></script>
   </body>
 </html>
