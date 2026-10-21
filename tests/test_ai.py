@@ -15,7 +15,7 @@ from app.main import app
 
 @pytest.fixture
 def provider(monkeypatch):
-    monkeypatch.setenv('OPENAI_API_KEY', 'test-placeholder-never-real')
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-placeholder-never-real')
     client = MagicMock()
     monkeypatch.setattr(ai.httpx, 'Client', MagicMock(return_value=client))
     client.__enter__.return_value = client
@@ -27,7 +27,7 @@ def context():
 
 
 def test_missing_key_never_calls_provider(monkeypatch):
-    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     client = MagicMock()
     monkeypatch.setattr(ai.httpx, 'Client', client)
     with pytest.raises(HTTPException) as exc:
@@ -37,14 +37,17 @@ def test_missing_key_never_calls_provider(monkeypatch):
 
 
 def test_provider_request_and_text_extraction(provider):
-    provider.post.return_value = httpx.Response(200, json={'status': 'completed', 'output': [
-        {'type': 'reasoning', 'summary': []},
-        {'type': 'message', 'content': [{'type': 'output_text', 'text': 'Estoque suficiente.'}]}]})
+    provider.post.return_value = httpx.Response(200, json={'stop_reason': 'end_turn', 'content': [
+        {'type': 'thinking', 'thinking': 'internal'},
+        {'type': 'text', 'text': 'Estoque suficiente.'}]})
     result = ai.answer('O que comprar?', context())
     assert result['resposta'] == 'Estoque suficiente.'
     args, kwargs = provider.post.call_args
-    assert args[0] == 'https://api.openai.com/v1/responses'
-    assert kwargs['json']['store'] is False
+    assert args[0] == 'https://api.anthropic.com/v1/messages'
+    assert kwargs['headers'] == {'x-api-key': 'test-placeholder-never-real', 'anthropic-version': '2023-06-01'}
+    assert kwargs['json']['system'] == ai.SYSTEM_PROMPT
+    assert kwargs['json']['max_tokens'] == 1200
+    assert json.loads(kwargs['json']['messages'][0]['content'])['pergunta'] == 'O que comprar?'
     assert 'tools' not in kwargs['json']
     assert 'test-placeholder-never-real' not in json.dumps(kwargs['json'])
 
@@ -66,8 +69,8 @@ def test_timeout(provider):
 
 
 @pytest.mark.parametrize('body,code', [
-    ({'status': 'incomplete'}, 'IA_RESPOSTA_INCOMPLETA'),
-    ({'status': 'completed', 'output': []}, 'IA_RESPOSTA_VAZIA'),
+    ({'stop_reason': 'max_tokens'}, 'IA_RESPOSTA_INCOMPLETA'),
+    ({'stop_reason': 'end_turn', 'content': []}, 'IA_RESPOSTA_VAZIA'),
     (['wrong format'], 'IA_RESPOSTA_INVALIDA')])
 def test_invalid_output(provider, body, code):
     provider.post.return_value = httpx.Response(200, json=body)
@@ -78,7 +81,7 @@ def test_invalid_output(provider, body, code):
 
 def test_ai_auth_configuration_and_validation(setup, monkeypatch):
     c = setup
-    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     assert c.get('/ia/status').json()['configurado'] is False
     assert c.post('/ia/perguntar', json={'pergunta': 'O que comprar?'}).status_code == 503
     assert c.post('/ia/perguntar', json={'pergunta': 'oi'}).status_code == 422
@@ -121,7 +124,7 @@ def test_context_tenant_isolation_decimal_and_empty_days(setup):
 
 def test_question_passes_only_authorized_context(setup, monkeypatch):
     c = setup
-    monkeypatch.setenv('OPENAI_API_KEY', 'test-only')
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-only')
     captured = {}
     def fake_answer(question, data):
         captured.update(data)
@@ -140,7 +143,7 @@ def test_frontend_served_without_database():
         for page in ['index', 'estoque', 'vendas', 'receitas', 'agente']:
             r = c.get(f'/painel/{page}.html')
             assert r.status_code == 200
-            assert '<script' not in r.text.lower()
+            assert ('agente.js' if page == 'agente' else 'painel.js') in r.text
         assert c.get('/painel/styles.css').status_code == 200
         assert c.get('/painel/.env').status_code == 404
 

@@ -10,13 +10,14 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from app.db import connect
+from app.operation_context import read as read_operation_context
 from app.losses import report as loss_report
 from app.schemas import Model
 
 
 class Question(Model):
     pergunta: str = Field(min_length=3, max_length=2000)
-    dias_historico: int = Field(default=7, ge=1, le=90)
+    dias_historico: int = Field(default=14, ge=1, le=90)
     dias_cobertura: int = Field(default=3, ge=1, le=30)
 
 
@@ -28,12 +29,12 @@ def error(code, status):
 
 
 def configuration():
-    return {'nome': 'Otto', 'configurado': bool(os.getenv('OPENAI_API_KEY', '').strip()),
-            'provedor': 'openai', 'modelo': os.getenv('AI_MODEL', 'gpt-4.1-mini'),
+    return {'nome': 'Otto', 'configurado': bool(os.getenv('ANTHROPIC_API_KEY', '').strip()),
+            'provedor': 'anthropic', 'modelo': os.getenv('AI_MODEL', 'claude-sonnet-4-6'),
             'modo': 'somente_leitura'}
 
 
-def build_context(operation_id, history_days=7, horizon=3):
+def build_context(operation_id, history_days=14, horizon=3):
     """Uma fotografia consistente, sem usuarios, pagamentos individuais ou tokens."""
     with connect() as db:
         db.commit()  # connect configura TimeZone; inicia agora uma transacao somente leitura.
@@ -79,6 +80,7 @@ def build_context(operation_id, history_days=7, horizon=3):
             (SELECT count(*) FROM lotes WHERE operacao_id=%s) AS lotes,
             (SELECT count(*) FROM vendas WHERE operacao_id=%s) AS vendas''', (operation_id,) * 4).fetchone()
         loss_data = loss_report(db, operation_id, start, today - timedelta(days=1))
+        operation_context = read_operation_context(db, operation_id, start, today)
         loss_data.pop('registros')  # Nao enviar nomes/IDs de responsaveis nem movimentos individuais.
     truncated = len(rows) > 100
     ingredients = []
@@ -93,7 +95,7 @@ def build_context(operation_id, history_days=7, horizon=3):
             'abaixo_minimo': row['saldo_utilizavel'] < row['estoque_minimo']})
     summary['margem_ingredientes'] = summary['receita'] - summary['custo_ingredientes_consumidos']
     summary['custo_perdas_independentes'] = losses
-    return {'agente': 'Otto', 'cadastros': counts,
+    return {'agente': 'Otto', 'operacao': operation_context, 'cadastros': counts,
             'estado_dados': 'sem_cadastros' if not any(counts.values()) else 'com_cadastros',
             'sem_vendas_no_periodo': summary['vendas_confirmadas'] + summary['vendas_estornadas'] == 0,
             'produtos': products[:100], 'fichas': recipes, 'produtos_truncados': len(products) > 100,
@@ -113,19 +115,19 @@ def build_context(operation_id, history_days=7, horizon=3):
 
 
 def answer(question, context):
-    key = os.getenv('OPENAI_API_KEY', '').strip()
+    key = os.getenv('ANTHROPIC_API_KEY', '').strip()
     if not key:
         error('IA_NAO_CONFIGURADA', 503)
-    payload = {'model': configuration()['modelo'], 'instructions': SYSTEM_PROMPT,
-               'input': json.dumps({'pergunta': question, 'contexto': context}, default=str, ensure_ascii=False),
-               'max_output_tokens': 1200, 'store': False}
-    if len(payload['input']) > 80000:
+    content = json.dumps({'pergunta': question, 'contexto': context}, default=str, ensure_ascii=False)
+    if len(content) > 80000:
         error('CONTEXTO_IA_MUITO_GRANDE', 422)
+    payload = {'model': configuration()['modelo'], 'system': SYSTEM_PROMPT,
+               'messages': [{'role': 'user', 'content': content}], 'max_tokens': 1200}
     try:
         # URL fixa: a chave nunca e enviada a um host indicado pelo cliente.
         with httpx.Client(timeout=httpx.Timeout(30.0, connect=5.0), follow_redirects=False) as client:
-            response = client.post('https://api.openai.com/v1/responses',
-                headers={'Authorization': f'Bearer {key}'}, json=payload)
+            response = client.post('https://api.anthropic.com/v1/messages',
+                headers={'x-api-key': key, 'anthropic-version': '2023-06-01'}, json=payload)
     except httpx.TimeoutException:
         error('IA_TEMPO_ESGOTADO', 504)
     except httpx.RequestError:
@@ -138,16 +140,18 @@ def answer(question, context):
         error('IA_INDISPONIVEL', 502)
     try:
         data = response.json()
-        if data.get('status') != 'completed':
+        if data.get('stop_reason') != 'end_turn':
             error('IA_RESPOSTA_INCOMPLETA', 502)
-        text = '\n'.join(part['text'] for item in data.get('output', [])
-            if item.get('type') == 'message' for part in item.get('content', [])
-            if part.get('type') == 'output_text' and isinstance(part.get('text'), str)).strip()
+        text = '\n'.join(part['text'] for part in data.get('content', [])
+            if part.get('type') == 'text' and isinstance(part.get('text'), str)).strip()
     except (ValueError, TypeError, KeyError, AttributeError):
         error('IA_RESPOSTA_INVALIDA', 502)
     if not text:
         error('IA_RESPOSTA_VAZIA', 502)
-    return {'agente': 'Otto', 'resposta': text, 'modelo': configuration()['modelo'], 'modo': 'somente_leitura',
+    report = context.get('operacao', {}).get('relatorio_semanal', {})
+    if report.get('pergunta') and report['pergunta'] not in text:
+        text += '\n\n' + report['pergunta']
+    return {'agente': 'Otto', 'relatorio_semanal': report, 'resposta': text, 'modelo': configuration()['modelo'], 'modo': 'somente_leitura',
             'periodo': context['periodo'], 'gerado_em': context['gerado_em'],
             'fontes': ['vendas agregadas', 'lotes por insumo', 'movimentacoes agregadas'],
             'insumos_truncados': context['insumos_truncados']}

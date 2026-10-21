@@ -101,7 +101,7 @@
           <div class="top-meta">
             <span>Organização que dá resultado</span
             ><span class="demo-badge"
-              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+              ><span class="dot"></span> CONSULTANDO DADOS</span
             >
           </div>
         </header>
@@ -115,7 +115,7 @@
               </p>
             </div>
             <div class="actions">
-              <span class="button">Período não selecionado</span
+              <span class="button">Histórico cadastrado</span
               ><a class="button primary" href="estoque.html"
                 >Ver estoque
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -123,39 +123,21 @@
               ></a>
             </div>
           </section>
-          <div class="notice">
-            Os dados serão cadastrados nas tabelas do sistema. Esta interface
-            HTML/CSS ainda não consulta a API; nenhum valor de exemplo é
-            exibido.
-          </div>
-          <section class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>Aguardando integração com o estoque</h2>
-                <p>Informações da operação</p>
-              </div>
-            </div>
-            <div class="panel-body">
-              <div class="empty-state">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="m3 7 9-4 9 4v10l-9 4-9-4Z M3 7l9 4 9-4 M12 11v10 M7 5l10 4"
-                  />
-                </svg>
-                <h3>Os cadastros serão adicionados depois.</h3>
-                <p>
-                  Cadastre insumos e recebimentos nas tabelas. Os saldos e as
-                  validades precisam vir desses registros.
-                </p>
-              </div>
-            </div>
-          </section>
+          <div class="notice" id="connection-status" role="status">Carregando dados da operação…</div>
+          <form id="panel-login" class="panel panel-body" hidden>
+            <label for="panel-token">Token de usuário do OktoStock</label>
+            <input id="panel-token" type="password" autocomplete="off" required />
+            <button class="button primary" type="submit">Conectar</button>
+          </form>
+          <div id="live-content" aria-live="polite"></div>
+          <noscript>Ative o JavaScript para consultar os registros da operação.</noscript>
           <footer class="footer">
             <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
-            ><span>HTML + CSS · sem dados de exemplo</span>
+            ><span>Dados consultados no PostgreSQL</span>
           </footer>
         </div>
       </main>
     </div>
+    <script src="painel.js" defer></script>
   </body>
 </html>

@@ -101,7 +101,7 @@
           <div class="top-meta">
             <span>Organização que dá resultado</span
             ><span class="demo-badge"
-              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+              ><span class="dot"></span> CONSULTANDO DADOS</span
             >
           </div>
         </header>
@@ -115,148 +115,26 @@
               </p>
             </div>
             <div class="actions">
-              <a class="button primary" href="#por-receita"
+              <a class="button primary" href="#perdas-por-receita"
                 >Ver por receita ↓</a
               >
             </div>
           </section>
-          <div class="notice">
-            O backend já calcula estes indicadores a partir dos registros. Esta
-            tela HTML/CSS aguarda integração com a API; os traços abaixo não
-            significam perda zero.
-          </div>
-          <div class="metrics">
-            <article class="metric highlight">
-              <div class="metric-top">Perda total em reais</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">
-                Soma do custo histórico de todas as perdas
-              </p>
-            </article>
-            <article class="metric">
-              <div class="metric-top">Sobre o faturamento bruto</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">Perdas ÷ faturamento × 100</p>
-            </article>
-            <article class="metric">
-              <div class="metric-top">Porções descartadas</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">Somente perdas registradas em porções</p>
-            </article>
-            <article class="metric">
-              <div class="metric-top">Receita com maior perda</div>
-              <div class="metric-value">—</div>
-              <p class="metric-foot">Comparação por custo no período</p>
-            </article>
-          </div>
-          <div class="tabs">
-            <a href="#por-receita">Por receita</a
-            ><a href="#por-insumo">Por ingrediente</a
-            ><a href="#registros">Registros</a>
-          </div>
-          <section class="panel" id="por-receita">
-            <div class="panel-head">
-              <div>
-                <h2>Perdas de cada receita</h2>
-                <p>Nome e versão preservados no registro da perda</p>
-              </div>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Receita / sabor</th>
-                    <th>Versão</th>
-                    <th>Porções perdidas</th>
-                    <th>Quantidades por unidade</th>
-                    <th>Custo da perda</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="5" class="empty-state">
-                      Aguardando consulta aos registros do período. Perdas sem
-                      receita aparecerão em “Sem receita vinculada”.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <section class="panel" id="por-insumo" style="margin-top: 24px">
-            <div class="panel-head">
-              <div>
-                <h2>Perdas por ingrediente</h2>
-                <p>
-                  Gramas, mililitros e unidades são apresentados separadamente
-                </p>
-              </div>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ingrediente</th>
-                    <th>Quantidade perdida</th>
-                    <th>Unidade</th>
-                    <th>Custo total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="4" class="empty-state">
-                      Os totais virão dos lotes e dos movimentos de perda
-                      cadastrados.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <section class="panel" id="registros" style="margin-top: 24px">
-            <div class="panel-head">
-              <div>
-                <h2>Histórico e motivos</h2>
-                <p>Rastreabilidade por data, turno, lote e responsável</p>
-              </div>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Receita</th>
-                    <th>Insumo / lote</th>
-                    <th>Quantidade</th>
-                    <th>Motivo</th>
-                    <th>Custo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="6" class="empty-state">
-                      Aguardando integração do histórico de perdas.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <div class="callout">
-            <h3>Registre a perda uma única vez.</h3>
-            <p>
-              Uma perda de porção completa já baixa seus ingredientes. Não
-              registre as mesmas quantidades novamente como perdas de insumos.
-              Alimentos baixados por uma venda também não devem ser descontados
-              outra vez.
-            </p>
-          </div>
+          <div class="notice" id="connection-status" role="status">Carregando dados da operação…</div>
+          <form id="panel-login" class="panel panel-body" hidden>
+            <label for="panel-token">Token de usuário do OktoStock</label>
+            <input id="panel-token" type="password" autocomplete="off" required />
+            <button class="button primary" type="submit">Conectar</button>
+          </form>
+          <div id="live-content" aria-live="polite"></div>
+          <noscript>Ative o JavaScript para consultar os registros da operação.</noscript>
           <footer class="footer">
             <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
-            ><span>HTML + CSS · sem dados de exemplo</span>
+            ><span>Dados consultados no PostgreSQL</span>
           </footer>
         </div>
       </main>
     </div>
+    <script src="painel.js" defer></script>
   </body>
 </html>

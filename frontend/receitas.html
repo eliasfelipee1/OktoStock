@@ -104,7 +104,7 @@
           <div class="top-meta">
             <span>Organização que dá resultado</span
             ><span class="demo-badge"
-              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+              ><span class="dot"></span> CONSULTANDO DADOS</span
             >
           </div>
         </header>
@@ -118,7 +118,7 @@
               </p>
             </div>
             <div class="actions">
-              <span class="button">Período não selecionado</span
+              <span class="button">Histórico cadastrado</span
               ><a class="button primary" href="estoque.html"
                 >Ver estoque
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -126,143 +126,21 @@
               ></a>
             </div>
           </section>
-          <div class="notice">
-            Quatro sabores previstos para a barraca, com fotografias externas de
-            referência. As imagens não são fotos dos seus produtos; fichas,
-            preços e estoque serão cadastrados depois.
-          </div>
-          <section
-            class="cards flavor-cards"
-            aria-label="Os quatro sabores da barraca"
-          >
-            <article class="panel recipe-card" id="sabor-vegetariana">
-              <div class="potato-photo">
-                <img
-                  src="assets/batatas/vegetariana.png"
-                  alt="Batata recheada com creme de brócolis, referência visual vegetariana"
-                  width="640"
-                  height="480"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div class="panel-body">
-                <div class="recipe-title"><h2>Vegetariana</h2></div>
-                <p>Brócolis, milho e queijo</p>
-                <div class="recipe-info">
-                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
-                </div>
-                <details class="photo-credit">
-                  <summary>Sobre a imagem</summary>
-                  <p>
-                    Referência com creme de brócolis; composição diferente da
-                    ficha prevista.
-                  </p>
-                  <a
-                    href="https://yatnamarayoga.blogspot.com/2018/09/batata-recheada-com-creme-de-brocolis.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Fonte: Yatna Yoga ↗</a
-                  >
-                </details>
-              </div>
-            </article>
-            <article class="panel recipe-card" id="sabor-strogonoff">
-              <div class="potato-photo">
-                <img
-                  src="assets/batatas/strogonoff-frango.jpg"
-                  alt="Batata recheada com strogonoff de frango e batata palha"
-                  width="640"
-                  height="480"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div class="panel-body">
-                <div class="recipe-title"><h2>Strogonoff de frango</h2></div>
-                <p>Frango ao molho cremoso</p>
-                <div class="recipe-info">
-                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
-                </div>
-                <details class="photo-credit">
-                  <summary>Sobre a imagem</summary>
-                  <p>Foto de referência de strogonoff de frango.</p>
-                  <a
-                    href="https://www.chesini.com.br/receita/batata-recheada-com-strogonoff-de-frango-chesini"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Fonte: Chesini ↗</a
-                  >
-                </details>
-              </div>
-            </article>
-            <article class="panel recipe-card" id="sabor-blumenau">
-              <div class="potato-photo">
-                <img
-                  src="assets/batatas/linguica-blumenau.jpg"
-                  alt="Batatas recheadas com linguiça Blumenau, miniatura do vídeo da receita"
-                  width="640"
-                  height="480"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div class="panel-body">
-                <div class="recipe-title"><h2>Linguiça Blumenau</h2></div>
-                <p>Linguiça Blumenau e queijo</p>
-                <div class="recipe-info">
-                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
-                </div>
-                <details class="photo-credit">
-                  <summary>Sobre a imagem</summary>
-                  <p>
-                    Foto da receita em vídeo; identificação da fonte preservada.
-                  </p>
-                  <a
-                    href="https://www.youtube.com/watch?v=UN5KNwvNXIs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Fonte: Nossas Receitas · YouTube ↗</a
-                  >
-                </details>
-              </div>
-            </article>
-            <article class="panel recipe-card" id="sabor-bolonhesa">
-              <div class="potato-photo">
-                <img
-                  src="assets/batatas/bolonhesa.png"
-                  alt="Batatas recheadas à bolonhesa, gratinadas com queijo e ervas"
-                  width="640"
-                  height="480"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div class="panel-body">
-                <div class="recipe-title"><h2>Bolonhesa</h2></div>
-                <p>Carne moída ao molho de tomate</p>
-                <div class="recipe-info">
-                  <span>Preço e ficha técnica</span><span>A cadastrar</span>
-                </div>
-                <details class="photo-credit">
-                  <summary>Sobre a imagem</summary>
-                  <p>Foto de referência de batata recheada à bolonhesa.</p>
-                  <a
-                    href="https://vokare.com.br/receita-de-batata-recheada-a-bolonhesa/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Fonte: Vokare / Folha de Notícias ↗</a
-                  >
-                </details>
-              </div>
-            </article>
-          </section>
+          <div class="notice" id="connection-status" role="status">Carregando dados da operação…</div>
+          <form id="panel-login" class="panel panel-body" hidden>
+            <label for="panel-token">Token de usuário do OktoStock</label>
+            <input id="panel-token" type="password" autocomplete="off" required />
+            <button class="button primary" type="submit">Conectar</button>
+          </form>
+          <div id="live-content" aria-live="polite"></div>
+          <noscript>Ative o JavaScript para consultar os registros da operação.</noscript>
           <footer class="footer">
             <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
-            ><span>HTML + CSS · sem dados de exemplo</span>
+            ><span>Dados consultados no PostgreSQL</span>
           </footer>
         </div>
       </main>
     </div>
+    <script src="painel.js" defer></script>
   </body>
 </html>

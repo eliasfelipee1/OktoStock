@@ -103,7 +103,7 @@
           <div class="top-meta">
             <span>Organização que dá resultado</span
             ><span class="demo-badge"
-              ><span class="dot"></span> AGUARDANDO INTEGRAÇÃO</span
+              ><span class="dot"></span> CONEXÃO COM A API</span
             >
           </div>
         </header>
@@ -129,9 +129,7 @@
             </div>
           </section>
           <div class="notice">
-            Os dados serão cadastrados nas tabelas do sistema. Esta interface
-            HTML/CSS ainda não consulta a API; nenhum valor de exemplo é
-            exibido.
+            Conecte sua operação com o token de usuário da API. A base de demonstração contém dados simulados; não representa vendas reais.
           </div>
           <div class="agent-grid">
             <section class="panel">
@@ -169,18 +167,28 @@
                   </article>
                 </div>
                 <div class="question-box">
+                  <label for="api-token">Token de usuário do OktoStock</label>
+                  <input id="api-token" type="password" autocomplete="off" placeholder="Token de gerente ou IA (não a chave Anthropic)" />
+                  <button class="button" id="connect-otto" type="button">Conectar operação</button>
+                  <p id="operation-status" role="status"></p>
+                  <div id="report-preference" hidden>
+                    <p>Você deseja receber um relatório da barraca todo domingo à noite?</p>
+                    <button class="button" id="report-yes" type="button">Sim, tenho interesse</button>
+                    <button class="button" id="report-no" type="button">Não quero</button>
+                    <p>A preferência será salva. O envio só poderá ser ativado após definir horário, canal e serviço de envio.</p>
+                  </div>
                   <label for="pergunta" class="subtext">Pergunte ao Otto</label
                   ><textarea
                     id="pergunta"
-                    disabled
+                    minlength="3" maxlength="2000" disabled
                     placeholder="Sua pergunta sobre a operação"
                     aria-describedby="chat-aviso"
                   ></textarea>
+                  <p id="otto-answer" role="status" style="white-space: pre-wrap; text-align: left;"></p>
                   <div class="question-bottom">
                     <span id="chat-aviso"
-                      >Chat aguardando integração desta interface com a
-                      API.</span
-                    ><button class="button primary" disabled>Enviar</button>
+                      >Conecte a operação para perguntar. Cada pergunta é independente.</span
+                    ><button id="send-otto" class="button primary" disabled>Enviar</button>
                   </div>
                 </div>
               </div>
@@ -202,7 +210,7 @@
                     ><strong>Somente leitura</strong>
                   </li>
                   <li>
-                    <span>Dados de exemplo</span><strong>Não utilizados</strong>
+                    <span>Natureza dos dados</span><strong id="data-nature">Aguardando conexão</strong>
                   </li>
                 </ul>
                 <div class="help">
@@ -233,10 +241,11 @@
           </div>
           <footer class="footer">
             <span>© 2026 OktoStock · Cuidando de cada ingrediente.</span
-            ><span>HTML + CSS · sem dados de exemplo</span>
+            ><span>Dados consultados pela API · demonstração identificada</span>
           </footer>
         </div>
       </main>
     </div>
+    <script src="agente.js" defer></script>
   </body>
 </html>

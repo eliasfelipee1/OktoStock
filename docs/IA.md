@@ -1,6 +1,6 @@
 # Otto — backend preparado
 
-A integração inicial usa a Responses API da OpenAI. O frontend é HTML/CSS estático, sem dados demonstrativos: não envia perguntas nem lê o estado real da chave. Os endpoints abaixo já podem ser usados pelo Swagger ou por um cliente autorizado.
+A integração inicial usa a Messages API da Anthropic. A tela do Otto consulta a API com token de usuário e envia perguntas. As demais telas permanecem estáticas. A base okto contém dados simulados identificados no contexto. Os endpoints abaixo já podem ser usados pelo Swagger ou por um cliente autorizado.
 
 ## Ativar depois
 
@@ -8,23 +8,23 @@ A integração inicial usa a Responses API da OpenAI. O frontend é HTML/CSS est
 2. Preencha no `.env` local:
 
 ```dotenv
-OPENAI_API_KEY=SUA_CHAVE_AQUI
-AI_MODEL=gpt-4.1-mini
+ANTHROPIC_API_KEY=SUA_CHAVE_AQUI
+AI_MODEL=claude-sonnet-4-6
 ```
 
-3. Reinicie a API. A aplicação lê o `.env` na inicialização. Se o modelo não estiver disponível na sua conta, configure `AI_MODEL` com um modelo de texto compatível com a Responses API ao qual você tenha acesso.
-4. Em `/docs`, autorize com o token de usuário `gerente` ou `ia` criado pelo DEV1. Esse token é diferente da chave OpenAI.
+3. Reinicie a API. A aplicação lê o `.env` na inicialização. Se o modelo não estiver disponível na sua conta, configure `AI_MODEL` com um modelo de texto compatível com a Messages API ao qual você tenha acesso.
+4. Em `/docs`, autorize com o token de usuário `gerente` ou `ia` criado pelo DEV1. Esse token é diferente da chave Anthropic.
 5. Consulte `GET /ia/status` e envie `POST /ia/perguntar`:
 
 ```json
 {
   "pergunta": "Quais ingredientes precisam de reposição para os próximos três dias?",
-  "dias_historico": 7,
+  "dias_historico": 14,
   "dias_cobertura": 3
 }
 ```
 
-`configurado: true` indica somente presença de chave; não valida saldo, permissão do modelo nem conexão com o provedor. As chamadas reais usam a conta de API configurada. Nenhuma chamada real foi feita durante a implementação: os testes usam respostas simuladas.
+`configurado: true` indica somente presença de chave; não valida saldo, permissão do modelo nem conexão com o provedor. As chamadas reais usam a conta de API configurada. Os testes automatizados usam respostas simuladas. A configuração local também foi validada com chamada real à Anthropic em 21/10/2026.
 
 ## Rotas
 
@@ -48,7 +48,7 @@ Todas exigem token `gerente` ou `ia`. A operação vem do usuário autenticado, 
 
 ## Comportamento do provedor
 
-`app/ai.py` concentra consultas, cálculos e adaptador HTTP; o prompt do Otto está em `app/prompts/otto.txt`. O endpoint externo é fixo (`https://api.openai.com/v1/responses`), sem redirecionamentos. A chave fica somente no cabeçalho enviado pelo backend. `store=false`, sem ferramentas de execução, sem SQL gerado e sem histórico persistido de conversa. Cada pergunta é independente. As respostas são texto não confiável: uma futura tela deve escapar conteúdo e nunca inserir HTML bruto retornado pelo modelo.
+`app/ai.py` concentra consultas, cálculos e adaptador HTTP; o prompt do Otto está em `app/prompts/otto.txt`. O endpoint externo é fixo (`https://api.anthropic.com/v1/messages`), sem redirecionamentos. A chave fica somente no cabeçalho enviado pelo backend. Sem ferramentas de execução, sem SQL gerado e sem histórico persistido de conversa. Cada pergunta é independente. As respostas são texto não confiável: uma futura tela deve escapar conteúdo e nunca inserir HTML bruto retornado pelo modelo.
 
 A chamada tem 5 segundos para conectar, 30 segundos de timeout de leitura e limite de 1.200 tokens de saída. Não há repetição automática em falha. Perguntas têm até 2.000 caracteres; histórico de 1–90 dias; cobertura de 1–30 dias. Antes de compartilhar em produção, estabelecer quotas e limites de requisição por usuário no gateway: esta versão ainda não aplica limite diário de chamadas.
 
@@ -66,7 +66,7 @@ A chamada tem 5 segundos para conectar, 30 segundos de timeout de leitura e limi
 
 Erros externos são sanitizados: a API não devolve corpo bruto do provedor, cabeçalhos ou chave. Não há resposta inventada quando o modelo falha. O acesso de leitura é garantido pela ausência de ferramentas de escrita, além das permissões da API; não depende apenas do prompt.
 
-Referência usada: [geração de texto e Responses API — documentação oficial OpenAI](https://developers.openai.com/api/docs/guides/text).
+Referência usada: [Messages API — documentação oficial Anthropic](https://platform.claude.com/docs/en/api/messages/create).
 
 ## Dados reais e cadastros pendentes
 
@@ -77,3 +77,5 @@ Referência usada: [geração de texto e Responses API — documentação oficia
 O texto completo fornecido pelo usuário está em `OTTO_REQUISITOS.md`, com o nome atualizado para Otto. Ele descreve também módulos futuros: custos adicionais, fatores de correção e restrições do fornecedor ainda precisam de estrutura própria. Otto deve declarar essas limitações; não simular registros nem afirmar que executou alterações. Nenhuma receita do documento foi cadastrada automaticamente.
 
 Atualização: perdas por receita e total implementadas, com migration 002 e integração de agrupamentos no contexto do Otto. Leia `PERDAS.md` para distinguir descarte físico ainda não baixado de consumo já registrado em venda.
+
+O contexto inclui `operacao` com premissas, vendas por dia, ranking de porções e preferência do relatório dominical. Veja [base okto](DEMONSTRACAO_OKTO.md).
