@@ -12,6 +12,9 @@ Base local: `http://127.0.0.1:8000`. Contrato completo gerado em `/docs` e `/ope
 | POST /estoque/recebimentos | gerente, estoquista | Entrada por lote |
 | GET /estoque/lotes | gerente, estoquista, ia | Saldos e validades |
 | POST /estoque/perdas | gerente, estoquista | Baixa justificada |
+| POST /estoque/contagens | gerente, estoquista | Contagem de um lote; a diferença vira movimento `ajuste` (exige `idempotency_key`) |
+| GET /estoque/contagens | gerente, estoquista, ia | Histórico de contagens e custo das diferenças (`lote_id`, `inicio`, `fim`) |
+| GET /estoque/contagens/sugestoes | gerente, estoquista | Lotes com saldo, os nunca contados ou contados há mais tempo primeiro |
 | POST /turnos | gerente, caixa | Abrir turno próprio |
 | POST /turnos/{id}/fechar | gerente, caixa proprietário | Fechar e totalizar vendas confirmadas |
 | POST /vendas | gerente, caixa proprietário do turno | Venda e baixa atômicas |

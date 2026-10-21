@@ -62,6 +62,13 @@ class Perda(Model):
     motivo: str = Field(min_length=3, max_length=500)
 
 
+class Contagem(Model):
+    lote_id: UUID
+    saldo_contado: Decimal = Field(ge=0, max_digits=18, decimal_places=3)
+    motivo: str = Field(min_length=3, max_length=500)
+    idempotency_key: UUID
+
+
 class Motivo(Model):
     motivo: str = Field(min_length=3, max_length=500)
 

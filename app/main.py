@@ -14,9 +14,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
 
-from app import ai, losses
+from app import ai, inventory, losses
 from app.db import connect
-from app.schemas import Insumo, Motivo, Perda, PerdaReceita, Produto, Recebimento, Venda
+from app.schemas import Contagem, Insumo, Motivo, Perda, PerdaReceita, Produto, Recebimento, Venda
 
 app = FastAPI(title='OktoStock', version='0.1.0')
 bearer = HTTPBearer()
@@ -154,6 +154,27 @@ def loss(body: Perda, u=Depends(user)):
 def recipe_loss(body: PerdaReceita, u=Depends(user)):
     roles(u, 'gerente', 'estoquista')
     return losses.register(u, body, recipe=True)
+
+
+@app.post('/estoque/contagens', status_code=201)
+def count_lot(body: Contagem, u=Depends(user)):
+    roles(u, 'gerente', 'estoquista')
+    return inventory.register(u, body)
+
+
+@app.get('/estoque/contagens')
+def counts(lote_id: Optional[UUID] = None, inicio: Optional[date] = None,
+           fim: Optional[date] = None, u=Depends(user)):
+    roles(u, 'gerente', 'estoquista', 'ia')
+    with connect() as db:
+        return inventory.history(db, u['operacao_id'], lote_id, inicio, fim)
+
+
+@app.get('/estoque/contagens/sugestoes')
+def count_suggestions(u=Depends(user)):
+    roles(u, 'gerente', 'estoquista')
+    with connect() as db:
+        return inventory.suggestions(db, u['operacao_id'])
 
 
 @app.get('/relatorios/perdas')
