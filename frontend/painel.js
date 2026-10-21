@@ -76,7 +76,7 @@ function render(data) {
   if(page==='perdas') {
     const l=data.perdas;
     root.append(metrics([['Custo total das perdas',money(l.custo_total_perdas),'Custos históricos dos lotes'],['Sobre a receita',number(l.percentual_sobre_receita_confirmada)+'%','Perdas ÷ receita confirmada'],['Porções descartadas',number(l.porcoes_perdidas_registradas),'Descarte de insumos não é contado como porção']]));
-    const byRecipe=panel('Perdas por receita','Descartes sem receita não são atribuídos a sabores');
+    const byRecipe=panel('Perdas por receita','Descartes sem receita não são atribuídos a sabores');byRecipe.id='perdas-por-receita';
     byRecipe.append(table(['Receita','Porções','Custo'],l.por_receita.map(i=>[i.nome,number(i.porcoes_registradas),money(i.custo)])));
     const byItem=panel('Perdas por ingrediente'); byItem.append(table(['Ingrediente','Quantidade','Custo'],l.por_insumo.map(i=>[i.nome,number(i.quantidade)+' '+i.unidade,money(i.custo)])));
     const history=panel('Histórico de perdas',`${l.registros.length} movimentos no período`);history.append(table(['Data','Ingrediente','Quantidade','Motivo','Custo'],l.registros.map(i=>[date(i.criado_em),i.insumo,number(i.quantidade)+' '+i.unidade,i.motivo,money(i.custo)])));

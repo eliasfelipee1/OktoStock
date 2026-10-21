@@ -8,9 +8,14 @@ const errors = {
   IA_NAO_CONFIGURADA: 'A IA ainda não está configurada no servidor.',
   IA_INDISPONIVEL: 'O provedor de IA está indisponível.',
   IA_TEMPO_ESGOTADO: 'O provedor demorou demais. Tente novamente.',
+  IA_RESPOSTA_INCOMPLETA: 'A resposta do Otto ficou incompleta. Tente uma pergunta mais específica.',
+  IA_RESPOSTA_VAZIA: 'O Otto não retornou texto. Tente novamente.',
+  IA_RESPOSTA_INVALIDA: 'O provedor de IA retornou uma resposta inválida.',
+  CONTEXTO_IA_MUITO_GRANDE: 'Há dados demais para enviar ao Otto. Reduza o período consultado.',
   CREDENCIAL_INVALIDA: 'Token de usuário inválido.',
-  SEM_PERMISSAO: 'Somente o gerente pode salvar a preferência.'
+  SEM_PERMISSAO: 'Este token não tem permissão para esta ação (Otto exige gerente ou IA).'
 };
+const TOKEN_KEY = 'okto-panel-token';
 async function request(path, body, method = 'POST') {
   const response = await fetch(path, {
     method: body === undefined ? 'GET' : method,
@@ -41,6 +46,7 @@ el('connect-otto').addEventListener('click', async () => {
   try {
     const data = await request('/ia/contexto?dias_historico=14');
     connected = true;
+    sessionStorage.setItem(TOKEN_KEY, token);
     el('pergunta').disabled = false;
     el('send-otto').disabled = false;
     el('operation-status').textContent = `Conectado: ${data.cadastros.produtos} sabores, ${data.cadastros.vendas} vendas cadastradas.`;
@@ -73,3 +79,5 @@ el('send-otto').addEventListener('click', async () => {
   } catch (error) { el('otto-answer').textContent = error.message; }
   finally { el('send-otto').disabled = !connected; }
 });
+const savedToken = sessionStorage.getItem(TOKEN_KEY);
+if (savedToken) { el('api-token').value = savedToken; el('connect-otto').click(); }
