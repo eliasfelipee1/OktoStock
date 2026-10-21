@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
 
-from app import ai, inventory, losses
+from app import ai, inventory, losses, planning
 from app.db import connect
 from app.schemas import Contagem, Insumo, Motivo, Perda, PerdaReceita, Produto, Recebimento, Venda
 
@@ -385,3 +385,9 @@ def ai_question(body: ai.Question, u=Depends(user)):
 
 
 app.mount('/painel', StaticFiles(directory=Path(__file__).resolve().parents[1] / 'frontend', html=True), name='painel')
+
+
+@app.post('/planejamento/pre-assadas')
+def plan_pre_baked(body: planning.PlanoPreAssadas, u=Depends(user)):
+    roles(u, 'gerente', 'ia')
+    return planning.calculate(body)

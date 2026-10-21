@@ -24,7 +24,12 @@ def register(u, body, recipe=False):
             if old:
                 if old['payload_hash'] != fingerprint:
                     fail('CHAVE_REUTILIZADA_COM_OUTRO_CONTEUDO')
-                return result(db, old['id'])
+                output = result(db, old['id'])
+                if not recipe:
+                    current = db.execute('SELECT saldo FROM lotes WHERE id=%s AND operacao_id=%s',
+                        (body.lote_id, u['operacao_id'])).fetchone()
+                    output.update(lote_id=body.lote_id, saldo=current['saldo'])
+                return output
         product = None
         if body.produto_id:
             product = db.execute('SELECT * FROM produtos WHERE id=%s AND operacao_id=%s',
@@ -139,7 +144,8 @@ def report(db, operation_id, start=None, end=None, shift_id=None):
     def percent(value):
         return (total/value*100).quantize(Decimal('0.01')) if value else None
     return {'periodo': {'inicio': start, 'fim_inclusivo': end}, 'turno_id': shift_id,
-        'sem_registros': not rows, 'custo_total_perdas': total, 'quantidades_por_unidade': dict(units),
+        'sem_registros': not rows, 'custo_total_perdas': total,
+        'porcoes_perdidas_registradas': sum((g['porcoes_registradas'] for g in groups.values()), Decimal(0)), 'quantidades_por_unidade': dict(units),
         **sales, 'percentual_sobre_faturamento_bruto': percent(sales['faturamento_bruto']),
         'percentual_sobre_receita_confirmada': percent(sales['receita_confirmada']),
         'percentual_sobre_custo_ingredientes_vendidos': percent(sales['custo_ingredientes_vendidos']),

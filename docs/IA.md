@@ -74,4 +74,6 @@ Referência usada: [geração de texto e Responses API — documentação oficia
 
 `compra_sugerida` permanece `null` enquanto não houver os parâmetros completos de reposição. `necessidade_teorica` é apenas uma conta de cobertura, quando há histórico, e não autoriza recomendação final. `pendencias_compra` lista informações ainda necessárias.
 
-O texto completo fornecido pelo usuário está em `OTTO_REQUISITOS.md`, com o nome atualizado para Otto. Ele descreve também módulos futuros: custos adicionais, perdas por sabor, fatores de correção e restrições do fornecedor ainda precisam de estrutura própria. Otto deve declarar essas limitações; não simular registros nem afirmar que executou alterações. Nenhuma receita do documento foi cadastrada automaticamente.
+O texto completo fornecido pelo usuário está em `OTTO_REQUISITOS.md`, com o nome atualizado para Otto. Ele descreve também módulos futuros: custos adicionais, fatores de correção e restrições do fornecedor ainda precisam de estrutura própria. Otto deve declarar essas limitações; não simular registros nem afirmar que executou alterações. Nenhuma receita do documento foi cadastrada automaticamente.
+
+Atualização: perdas por receita e total implementadas, com migration 002 e integração de agrupamentos no contexto do Otto. Leia `PERDAS.md` para distinguir descarte físico ainda não baixado de consumo já registrado em venda.
