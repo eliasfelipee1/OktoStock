@@ -140,10 +140,12 @@ def test_question_passes_only_authorized_context(setup, monkeypatch):
 def test_frontend_served_without_database():
     with TestClient(app) as c:
         assert c.get('/').status_code == 200
-        for page in ['index', 'estoque', 'vendas', 'receitas', 'agente']:
+        for page in ['index', 'estoque', 'vendas', 'receitas', 'perdas', 'producao']:
             r = c.get(f'/painel/{page}.html')
             assert r.status_code == 200
-            assert ('agente.js' if page == 'agente' else 'painel.js') in r.text
+            assert 'painel.js' in r.text and 'otto.js' in r.text
+            assert 'agente.html' not in r.text
+        assert c.get('/painel/agente.html').status_code == 404
         assert c.get('/painel/styles.css').status_code == 200
         assert c.get('/painel/.env').status_code == 404
 

@@ -56,6 +56,6 @@ Entregáveis: dashboard funcional, definição dos indicadores, módulo de previ
 
 ## Estrutura já preparada nesta entrega
 
-O backend do assistente está em `app/ai.py`, com leitura por operação, agregados, sugestão determinística de compra, prompt consultivo, chamada à Responses API e tratamento de falhas. A configuração fica em `.env`; instruções em `IA.md`. O frontend visual está em `frontend/agente.html`, sem envio de mensagens nesta etapa. Sua próxima entrega é integrar a experiência autenticada e avaliar a qualidade das respostas e previsões com dados reais.
+O backend do assistente está em `app/ai.py`, com leitura por operação, agregados, sugestão determinística de compra, prompt consultivo, chamada à Responses API e tratamento de falhas. A configuração fica em `.env`; instruções em `IA.md`. O frontend do Otto é o botão flutuante de `frontend/otto.js`, presente em todas as páginas. Sua próxima entrega é integrar a experiência autenticada e avaliar a qualidade das respostas e previsões com dados reais.
 
 Atualização: o assistente chama-se **Otto**. O frontend não usa mais valores demonstrativos. No contexto do agente, médias sem histórico são nulas e compras finais ficam pendentes dos parâmetros de demanda, validade, perdas, armazenamento e fornecedor; o script de baseline é apenas uma referência de cálculo, não uma recomendação aprovada. Consulte `OTTO_REQUISITOS.md` e `IA.md`.

@@ -1,6 +1,8 @@
 """API do MVP: nenhuma credencial PostgreSQL deve ir para o frontend."""
 import hashlib
 import os
+import threading
+import time
 import json
 from collections import defaultdict
 from datetime import date
@@ -390,22 +392,35 @@ def ai_question(body: ai.Question, u=Depends(user)):
     return ai.answer(body.pergunta, context)
 
 
+def panel_filters(inicio: Optional[date] = None, fim: Optional[date] = None,
+                  produto_id: Optional[UUID] = None, forma: Optional[str] = Query(None, max_length=30),
+                  dia_semana: Optional[int] = Query(None, ge=1, le=7)):
+    """Filtros do painel: período inclusivo, sabor, forma de pagamento e dia da semana ISO."""
+    return {'start': inicio, 'end': fim, 'product': produto_id, 'payment': forma, 'weekday': dia_semana}
+
+
 @app.get('/dashboard')
-def dashboard_data(pagina: int = Query(1, ge=1), u=Depends(user)):
+def dashboard_data(pagina: int = Query(1, ge=1), filters=Depends(panel_filters), u=Depends(user)):
     roles(u, 'gerente', 'ia')
     from app.dashboard import load
-    return load(u['operacao_id'], pagina)
+    return load(u['operacao_id'], pagina, **filters)
 
 
-@app.get('/demo/dados', include_in_schema=False)
-def local_demo_data(request: Request, response: Response, pagina: int = Query(1, ge=1)):
-    # Apenas leitura da operação explicitamente simulada, na instalação local.
-    from app.dashboard import load
+def remote_demo_enabled():
+    return os.getenv('DEMO_ACESSO_REMOTO', '').strip().lower() in ('1', 'true', 'sim')
+
+
+def local_demo_operation(request: Request):
+    """Operação simulada configurada no servidor, sem token no navegador.
+
+    Por padrão só atende o próprio computador; DEMO_ACESSO_REMOTO=1 libera outros
+    computadores, mas continua restrito à operação marcada como simulada."""
     local_hosts = {'127.0.0.1', 'localhost', '::1'}
     origin = request.headers.get('origin')
     configured = os.getenv('LOCAL_DEMO_OPERATION_ID')
-    if (not configured or not request.client or request.client.host not in local_hosts
-            or request.url.hostname not in local_hosts
+    local = (request.client and request.client.host in local_hosts
+             and request.url.hostname in local_hosts)
+    if (not configured or not request.client or not (local or remote_demo_enabled())
             or (origin and origin != str(request.base_url).rstrip('/'))
             or request.headers.get('sec-fetch-site') == 'cross-site'):
         fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
@@ -417,8 +432,42 @@ def local_demo_data(request: Request, response: Response, pagina: int = Query(1,
         config = db.execute("SELECT parametros FROM contextos_operacionais WHERE operacao_id=%s", (operation_id,)).fetchone()
         if not config or config['parametros'].get('natureza_dados') != 'simulados':
             fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
+    return operation_id
+
+
+@app.get('/demo/dados', include_in_schema=False)
+def local_demo_data(response: Response, pagina: int = Query(1, ge=1), filters=Depends(panel_filters),
+                    operation_id: UUID = Depends(local_demo_operation)):
+    # Apenas leitura da operação explicitamente simulada, na instalação local.
+    from app.dashboard import load
     response.headers['Cache-Control'] = 'no-store'
-    return load(operation_id, pagina)
+    return load(operation_id, pagina, **filters)
+
+
+_question_times = defaultdict(list)
+_question_lock = threading.Lock()
+
+
+def limit_questions(request: Request):
+    """Cada pergunta consome a chave Anthropic do servidor: limite por computador."""
+    limit = int(os.getenv('DEMO_PERGUNTAS_POR_MINUTO', '6'))
+    now = time.monotonic()
+    with _question_lock:
+        recent = [t for t in _question_times[request.client.host] if now - t < 60]
+        if len(recent) >= limit:
+            _question_times[request.client.host] = recent
+            fail('IA_LIMITE_DE_PERGUNTAS', 429)
+        _question_times[request.client.host] = recent + [now]
+
+
+@app.post('/demo/ia/perguntar', include_in_schema=False)
+def local_demo_question(body: ai.Question, operation_id: UUID = Depends(local_demo_operation),
+                        _=Depends(limit_questions)):
+    # Otto somente leitura sobre a operação simulada; a chave Anthropic fica no servidor.
+    if not ai.configuration()['configurado']:
+        fail('IA_NAO_CONFIGURADA', 503)
+    context = ai.build_context(operation_id, body.dias_historico, body.dias_cobertura)
+    return ai.answer(body.pergunta, context)
 
 
 app.mount('/painel', StaticFiles(directory=Path(__file__).resolve().parents[1] / 'frontend', html=True), name='painel')

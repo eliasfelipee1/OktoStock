@@ -117,3 +117,83 @@ def test_demo_requires_loopback_opt_in_and_simulated_data(setup, monkeypatch):
         with connect() as db:
             db.execute("UPDATE contextos_operacionais SET parametros='{}' WHERE operacao_id=%s",(op,))
         assert local.get('/demo/dados').status_code == 403
+
+
+def test_demo_otto_question_is_local_and_read_only(setup, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from psycopg.types.json import Jsonb
+    with connect() as db:
+        op = db.execute('SELECT id FROM operacoes').fetchone()['id']
+        db.execute('INSERT INTO contextos_operacionais(operacao_id,parametros) VALUES(%s,%s)',
+                   (op, Jsonb({'natureza_dados': 'simulados'})))
+    monkeypatch.setenv('LOCAL_DEMO_OPERATION_ID', str(op))
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-only')
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.post.return_value = httpx.Response(200, json={'stop_reason': 'end_turn',
+        'content': [{'type': 'text', 'text': 'Resposta do Otto.'}]})
+    monkeypatch.setattr(ai.httpx, 'Client', MagicMock(return_value=client))
+    body = {'pergunta': 'Como estamos?'}
+    setup.headers.clear()
+    assert setup.post('/demo/ia/perguntar', json=body).status_code == 403
+    with TestClient(app, base_url='http://localhost', client=('127.0.0.1', 12345)) as local:
+        response = local.post('/demo/ia/perguntar', json=body)
+        assert response.status_code == 200
+        assert response.json()['resposta'].startswith('Resposta do Otto.')
+        assert local.post('/demo/ia/perguntar', json=body,
+                          headers={'Origin': 'https://other.example'}).status_code == 403
+
+
+def test_remote_demo_requires_opt_in_and_limits_questions(setup, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import main
+    from psycopg.types.json import Jsonb
+    with connect() as db:
+        op = db.execute('SELECT id FROM operacoes').fetchone()['id']
+        db.execute('INSERT INTO contextos_operacionais(operacao_id,parametros) VALUES(%s,%s)',
+                   (op, Jsonb({'natureza_dados': 'simulados'})))
+    monkeypatch.setenv('LOCAL_DEMO_OPERATION_ID', str(op))
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-only')
+    monkeypatch.setenv('DEMO_PERGUNTAS_POR_MINUTO', '2')
+    monkeypatch.setattr(main, '_question_times', main.defaultdict(list))
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.post.return_value = httpx.Response(200, json={'stop_reason': 'end_turn',
+        'content': [{'type': 'text', 'text': 'Ok.'}]})
+    monkeypatch.setattr(ai.httpx, 'Client', MagicMock(return_value=client))
+    body = {'pergunta': 'Como estamos?'}
+    with TestClient(main.app, base_url='http://192.168.0.10:8000', client=('192.168.0.55', 5000)) as remote:
+        monkeypatch.delenv('DEMO_ACESSO_REMOTO', raising=False)
+        assert remote.get('/demo/dados').status_code == 403
+        assert remote.post('/demo/ia/perguntar', json=body).status_code == 403
+        monkeypatch.setenv('DEMO_ACESSO_REMOTO', '1')
+        assert remote.get('/demo/dados').status_code == 200
+        assert remote.get('/demo/dados', headers={'Origin': 'https://other.example'}).status_code == 403
+        assert [remote.post('/demo/ia/perguntar', json=body).status_code for _ in range(3)] == [200, 200, 429]
+        with connect() as db:
+            db.execute("UPDATE contextos_operacionais SET parametros='{}' WHERE operacao_id=%s", (op,))
+        assert remote.get('/demo/dados').status_code == 403
+
+
+def test_dashboard_filters_by_period_flavor_payment_and_weekday(setup):
+    with connect() as db:
+        db.execute('DELETE FROM usuarios')
+        db.execute('DELETE FROM operacoes')
+    seed('test-seed-token')
+    from app.dashboard import load
+    full = load(OPERATION_ID)
+    assert full['resumo']['vendas'] == 1280 and full['formas_pagamento'] == ['cartao', 'dinheiro', 'pix']
+    bolonhesa = next(p['id'] for p in full['produtos'] if p['nome'] == 'Bolonhesa')
+    data = load(OPERATION_ID, product=bolonhesa, payment='pix')
+    assert [r['nome'] for r in data['contexto']['ranking_sabores']] == ['Bolonhesa']
+    assert all('Bolonhesa' in v['itens'] and v['pagamento'] == 'pix' for v in data['vendas'])
+    assert 0 < data['resumo']['vendas'] < full['resumo']['vendas']
+    weekend = load(OPERATION_ID, start=date(2026, 10, 9), end=date(2026, 10, 11))
+    assert [r['dia'] for r in weekend['contexto']['vendas_por_dia']] == [date(2026, 10, d) for d in (9, 10, 11)]
+    saturdays = load(OPERATION_ID, weekday=6)
+    assert {r['dia_semana_iso'] for r in saturdays['contexto']['vendas_por_dia']} == {6}
+    from fastapi import HTTPException
+    import pytest
+    with pytest.raises(HTTPException):
+        load(OPERATION_ID, start=date(2026, 10, 12), end=date(2026, 10, 1))
