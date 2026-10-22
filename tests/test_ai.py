@@ -146,6 +146,8 @@ def test_frontend_served_without_database():
             assert 'painel.js' in r.text and 'otto.js' in r.text
             assert 'agente.html' not in r.text
         assert c.get('/painel/agente.html').status_code == 404
+        r = c.get('/painel/dashboard.html')
+        assert r.status_code == 200 and 'dashboard.js' in r.text and 'otto.js' in r.text
         assert c.get('/painel/styles.css').status_code == 200
         assert c.get('/painel/.env').status_code == 404
 

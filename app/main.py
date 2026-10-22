@@ -3,6 +3,9 @@ import hashlib
 import os
 import threading
 import time
+
+import anyio
+import psycopg
 import json
 from collections import defaultdict
 from datetime import date
@@ -12,7 +15,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
@@ -458,6 +461,49 @@ def limit_questions(request: Request):
             _question_times[request.client.host] = recent
             fail('IA_LIMITE_DE_PERGUNTAS', 429)
         _question_times[request.client.host] = recent + [now]
+
+
+_listeners = {'ativos': 0}
+MAX_LISTENERS = 20
+
+
+def _listen():
+    conn = psycopg.connect(os.environ['DATABASE_URL'], autocommit=True)
+    conn.execute('LISTEN okto_mudancas')
+    return conn
+
+
+def _wait_change(conn, operation_id, timeout):
+    """Bloqueia até um aviso da operação ou o tempo esgotar; agrupa rajadas de avisos."""
+    target = str(operation_id)
+    changed = any(n.payload == target for n in conn.notifies(timeout=timeout, stop_after=1))
+    if changed:  # Uma venda gera vários avisos; espera a rajada terminar antes de avisar a página.
+        list(conn.notifies(timeout=0.5))
+    return changed
+
+
+@app.get('/demo/eventos', include_in_schema=False)
+async def local_demo_events(operation_id: UUID = Depends(local_demo_operation)):
+    """Server-Sent Events: avisa a dashboard quando a operação muda no banco."""
+    async def stream():
+        if _listeners['ativos'] >= MAX_LISTENERS:  # Cada ouvinte usa uma conexão do banco.
+            yield 'event: lotado\ndata: {}\n\n'
+            return
+        _listeners['ativos'] += 1
+        conn = None
+        try:
+            conn = await anyio.to_thread.run_sync(_listen)
+            yield 'retry: 3000\nevent: pronto\ndata: {}\n\n'
+            while True:
+                changed = await anyio.to_thread.run_sync(_wait_change, conn, operation_id, 15)
+                yield 'event: mudanca\ndata: {}\n\n' if changed else ': ping\n\n'
+        finally:
+            _listeners['ativos'] -= 1
+            if conn is not None:
+                conn.close()
+
+    return StreamingResponse(stream(), media_type='text/event-stream',
+                             headers={'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no'})
 
 
 @app.post('/demo/ia/perguntar', include_in_schema=False)

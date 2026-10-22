@@ -159,7 +159,17 @@ function buildFilters(data){
   form.addEventListener('submit',e=>e.preventDefault());
   form.addEventListener('change',e=>{if(e.target.type!=='search')update(e.target);});
   form.addEventListener('input',e=>{if(e.target.type==='search')update(e.target);});
-  status.after(form);
+  // Barra recolhível: abre sozinha quando a página já chega com filtros ativos.
+  const toggle=node('details',null,'filters-toggle');
+  toggle.append(node('summary'),form);
+  toggle.open=keys.some(k=>filters[k]);
+  status.after(toggle);
+  filterSummary();
+}
+function filterSummary(){
+  const summary=document.querySelector('.filters-toggle > summary'); if(!summary)return;
+  const active=(PAGE_FILTERS[page]||[]).filter(k=>filters[k]).length;
+  summary.textContent=active?`Filtros (${active} ativo${active>1?'s':''})`:'Filtros';
 }
 function update(target){
   if(!target.name)return;
@@ -170,6 +180,7 @@ function update(target){
 function sync(reload){
   const query=new URLSearchParams(Object.entries(filters).filter(([,v])=>v)).toString();
   history.replaceState(null,'',query?'?'+query:location.pathname);
+  filterSummary();
   if(reload) load(1); else if(lastData) render(lastData);
 }
 async function load(pagina=1) {

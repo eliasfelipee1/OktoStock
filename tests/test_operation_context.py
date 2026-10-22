@@ -197,3 +197,15 @@ def test_dashboard_filters_by_period_flavor_payment_and_weekday(setup):
     import pytest
     with pytest.raises(HTTPException):
         load(OPERATION_ID, start=date(2026, 10, 12), end=date(2026, 10, 1))
+
+
+def test_database_changes_notify_realtime_listeners(setup):
+    import os
+    import psycopg
+    with connect() as db:
+        op = db.execute('SELECT id FROM operacoes').fetchone()['id']
+    with psycopg.connect(os.environ['DATABASE_URL'], autocommit=True) as listener:
+        listener.execute('LISTEN okto_mudancas')
+        assert setup.post('/insumos', json={'nome': 'Sal grosso', 'unidade': 'g'}).status_code == 201
+        payloads = [n.payload for n in listener.notifies(timeout=5, stop_after=1)]
+    assert payloads == [str(op)]

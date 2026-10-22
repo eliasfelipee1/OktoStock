@@ -80,6 +80,12 @@ def load(operation_id, page=1, start=None, end=None, product=None, payment=None,
             item['ingredientes'] = [r for r in recipes if r['produto_id'] == item['id']]
             item['custo_estimado'] = (sum(r['quantidade']*r['custo_unitario'] for r in item['ingredientes'])
                 if item['ingredientes'] and all(r['custo_unitario'] is not None for r in item['ingredientes']) else None)
+        by_payment = db.execute(f'''SELECT p.forma,count(DISTINCT v.id) AS vendas,sum(p.valor) AS valor
+            FROM pagamentos p JOIN vendas v ON v.id=p.venda_id
+            WHERE {where} AND v.status='confirmada' GROUP BY 1 ORDER BY valor DESC''', args).fetchall()
+        by_hour = db.execute(f'''SELECT extract(hour FROM v.criado_em)::int AS hora,count(*) AS vendas,
+            sum(v.total) AS receita FROM vendas v WHERE {where} AND v.status='confirmada'
+            GROUP BY 1 ORDER BY 1''', args).fetchall()
         payments = [r['forma'] for r in db.execute('''SELECT DISTINCT p.forma FROM pagamentos p
             JOIN vendas v ON v.id=p.venda_id WHERE v.operacao_id=%s ORDER BY 1''', (operation_id,)).fetchall()]
         sales = db.execute(f'''SELECT v.id,v.criado_em,v.total,v.custo,v.status,
@@ -94,6 +100,7 @@ def load(operation_id, page=1, start=None, end=None, product=None, payment=None,
         return {'operacao': operation, 'periodo': period, 'periodo_total': bounds, 'contexto': context,
                 'filtros': {'inicio': start, 'fim': end, 'produto_id': product, 'forma': payment,
                             'dia_semana': weekday},
-                'formas_pagamento': payments, 'resumo': summary,
+                'formas_pagamento': payments, 'por_pagamento': by_payment, 'por_hora': by_hour,
+                'resumo': summary,
                 'estoque': stock, 'produtos': products, 'vendas': sales, 'pagina': page,
                 'paginas': max(1, (summary['vendas']+49)//50), 'perdas': losses}
