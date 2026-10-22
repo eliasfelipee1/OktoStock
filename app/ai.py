@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from app.db import connect
+from app.purchasing import snapshot as purchasing_snapshot
 from app.operation_context import read as read_operation_context
 from app.losses import report as loss_report
 from app.schemas import Model
@@ -57,7 +58,7 @@ def build_context(operation_id, history_days=14, horizon=3):
             min(validade) FILTER(WHERE saldo>0 AND validade>=CURRENT_DATE) AS proxima_validade
             FROM lotes WHERE operacao_id=%s GROUP BY insumo_id), consumo AS (
             SELECT l.insumo_id,count(*) AS registros,-sum(m.quantidade) AS quantidade FROM movimentacoes m
-            JOIN lotes l ON l.id=m.lote_id WHERE m.operacao_id=%s AND m.tipo='venda'
+            JOIN lotes l ON l.id=m.lote_id WHERE m.operacao_id=%s AND m.tipo IN ('venda','producao')
             AND m.criado_em>=%s::date AND m.criado_em<%s::date GROUP BY l.insumo_id)
             SELECT i.id,i.nome,i.unidade,i.estoque_minimo,COALESCE(s.utilizavel,0) AS saldo_utilizavel,
             COALESCE(s.vencido,0) AS saldo_vencido,s.proxima_validade,
@@ -67,7 +68,7 @@ def build_context(operation_id, history_days=14, horizon=3):
             WHERE i.operacao_id=%s ORDER BY i.nome,i.id LIMIT 101''',
             (operation_id, operation_id, start, today, operation_id)).fetchall()
         products = db.execute('''SELECT id,nome,preco,versao,ativo FROM produtos
-            WHERE operacao_id=%s ORDER BY nome,id LIMIT 101''', (operation_id,)).fetchall()
+            WHERE operacao_id=%s AND (ativo OR ficha_detalhes->>'cardapio_atual'='true') ORDER BY nome,id LIMIT 101''', (operation_id,)).fetchall()
         recipes = []
         if products:
             recipes = db.execute('''SELECT r.produto_id,r.insumo_id,i.nome,i.unidade,r.quantidade
@@ -81,6 +82,19 @@ def build_context(operation_id, history_days=14, horizon=3):
             (SELECT count(*) FROM vendas WHERE operacao_id=%s) AS vendas''', (operation_id,) * 4).fetchone()
         loss_data = loss_report(db, operation_id, start, today - timedelta(days=1))
         operation_context = read_operation_context(db, operation_id, start, today)
+        purchasing_data = purchasing_snapshot(db, operation_id)
+        # Não enviar contatos, auditoria ou ofertas completas: apenas alertas e melhor proposta.
+        purchasing_context = {
+            'meta_por_sabor': purchasing_data['meta_por_sabor'],
+            'politica': purchasing_data['politica'],
+            'referencias_precos': [{k:q.get(k) for k in ('fornecedor','insumo','unidade','quantidade_embalagem','preco_embalagem','fonte_url','cotado_em','referencia_publica','local_confirmado','observacoes')} for q in purchasing_data['cotacoes'] if q['ativo'] and q.get('referencia_publica')],
+            'prontos': purchasing_data['prontos'],
+            'pendencias_fichas': purchasing_data['pendencias_fichas'],
+            'criterio': purchasing_data['criterio'],
+            'alertas': [{k: v for k, v in a.items() if k not in ('comparativo', 'operacao_id')}
+                        for a in purchasing_data['alertas']],
+        }
+        loss_data.pop('perdas_prontas', None)
         loss_data.pop('registros')  # Nao enviar nomes/IDs de responsaveis nem movimentos individuais.
     truncated = len(rows) > 100
     ingredients = []
@@ -95,7 +109,7 @@ def build_context(operation_id, history_days=14, horizon=3):
             'abaixo_minimo': row['saldo_utilizavel'] < row['estoque_minimo']})
     summary['margem_ingredientes'] = summary['receita'] - summary['custo_ingredientes_consumidos']
     summary['custo_perdas_independentes'] = losses
-    return {'agente': 'Otto', 'operacao': operation_context, 'cadastros': counts,
+    return {'agente': 'Otto', 'reposicao': purchasing_context, 'operacao': operation_context, 'cadastros': counts,
             'estado_dados': 'sem_cadastros' if not any(counts.values()) else 'com_cadastros',
             'sem_vendas_no_periodo': summary['vendas_confirmadas'] + summary['vendas_estornadas'] == 0,
             'produtos': products[:100], 'fichas': recipes, 'produtos_truncados': len(products) > 100,
@@ -103,7 +117,7 @@ def build_context(operation_id, history_days=14, horizon=3):
                 ('produtos', 'Cadastrar produtos e fichas tecnicas'), ('lotes', 'Registrar recebimentos, custos e validades'),
                 ('vendas', 'Registrar vendas para construir historico')] if counts[key] == 0],
             'campos_ainda_nao_suportados': ['Custos adicionais e margem alvo', 
-                'Capacidade de armazenamento e minimo de compra', 'Alergenicos e fatores de correcao estruturados'],
+                'Capacidade de armazenamento (mínimo de compra por cotação disponível em reposicao)', 'Alergenicos e fatores de correcao estruturados'],
             'gerado_em': clock['instante'], 'periodo': {'inicio': start, 'fim_exclusivo': today,
             'dias_completos': history_days, 'dias_cobertura': horizon},
             'resumo': summary, 'perdas': loss_data, 'insumos': ingredients, 'insumos_truncados': truncated,

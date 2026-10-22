@@ -20,18 +20,20 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
 
-from app import ai, losses, planning
+from app import ai, losses, planning, purchasing, ready_stock
+from app.monitor import lifespan
+from app.recipes import Recipe
 from app.db import connect
 from app.schemas import Insumo, Motivo, Perda, PerdaReceita, Produto, Recebimento, Venda
 
-app = FastAPI(title='OktoStock', version='0.1.0')
+app = FastAPI(title='OktoStock', version='0.2.0', lifespan=lifespan)
 bearer = HTTPBearer()
 
 
 @app.middleware('http')
 async def refresh_panel_assets(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith('/painel/') or request.url.path == '/dashboard':
+    if request.url.path.startswith(('/painel/', '/demo/', '/reposicao', '/fornecedores')) or request.url.path == '/dashboard':
         response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -234,15 +236,21 @@ def sell(body: Venda, u=Depends(user)):
             recipe = db.execute('SELECT insumo_id,quantidade FROM ingredientes WHERE produto_id=%s', (product['id'],)).fetchall()
             if not recipe:
                 fail('RECEITA_VAZIA')
+            if product['preco'] is None:
+                fail('PRECO_DE_VENDA_PENDENTE')
             total += product['preco'] * item.quantidade
-            for ingredient in recipe:
-                needs[ingredient['insumo_id']] += ingredient['quantidade'] * item.quantidade
+            if not product['ficha_detalhes'].get('controle_prontos'):
+                for ingredient in recipe:
+                    needs[ingredient['insumo_id']] += ingredient['quantidade'] * item.quantidade
             snapshots.append((product, item.quantidade, [{'insumo_id': str(i['insumo_id']), 'quantidade': str(i['quantidade'])} for i in recipe]))
         if sum(p.valor for p in body.pagamentos) != total:
             fail('PAGAMENTO_DIVERGENTE')
         sale = db.execute('''INSERT INTO vendas(operacao_id,turno_id,usuario_id,chave,payload_hash,total)
             VALUES(%s,%s,%s,%s,%s,%s) RETURNING *''',
             (u['operacao_id'], body.turno_id, u['id'], body.idempotency_key, fingerprint, total)).fetchone()
+        for product, quantity, recipe in snapshots:
+            if product['ficha_detalhes'].get('controle_prontos'):
+                cost += ready_stock.consume_sale(db, u, product['id'], quantity, sale['id'])
         for ingredient_id in sorted(needs, key=str):
             remaining = needs[ingredient_id]
             available = db.execute('''SELECT * FROM lotes WHERE operacao_id=%s AND insumo_id=%s
@@ -279,6 +287,7 @@ def get_sale(sale_id: UUID, u=Depends(user)):
             fail('SEM_PERMISSAO', 403)
         sale['itens'] = db.execute('SELECT * FROM venda_itens WHERE venda_id=%s', (sale_id,)).fetchall()
         sale['consumos'] = db.execute('SELECT * FROM movimentacoes WHERE venda_id=%s', (sale_id,)).fetchall()
+        sale['consumos_prontos'] = db.execute('SELECT * FROM movimentos_prontos WHERE venda_id=%s AND operacao_id=%s', (sale_id,u['operacao_id'])).fetchall()
         sale['pagamentos'] = db.execute('SELECT * FROM pagamentos WHERE venda_id=%s', (sale_id,)).fetchall()
         return sale
 
@@ -316,7 +325,9 @@ def availability(u=Depends(user)):
         return db.execute('''WITH saldos AS (
             SELECT insumo_id,sum(saldo) AS saldo FROM lotes
             WHERE operacao_id=%s AND validade>=CURRENT_DATE GROUP BY insumo_id)
-            SELECT p.id AS produto_id,p.nome,min(floor(COALESCE(s.saldo,0)/i.quantidade)) AS porcoes
+            SELECT p.id AS produto_id,p.nome,CASE WHEN p.ficha_detalhes->>'controle_prontos'='true'
+            THEN (SELECT coalesce(sum(lp.saldo),0) FROM lotes_prontos lp WHERE lp.operacao_id=p.operacao_id AND lp.produto_id=p.id AND lp.validade>now())
+            ELSE min(floor(COALESCE(s.saldo,0)/i.quantidade)) END AS porcoes
             FROM produtos p JOIN ingredientes i ON i.produto_id=p.id LEFT JOIN saldos s ON s.insumo_id=i.insumo_id
             WHERE p.operacao_id=%s AND p.ativo GROUP BY p.id ORDER BY p.nome''', (u['operacao_id'], u['operacao_id'])).fetchall()
 
@@ -433,7 +444,8 @@ def local_demo_operation(request: Request):
         fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
     with connect() as db:
         config = db.execute("SELECT parametros FROM contextos_operacionais WHERE operacao_id=%s", (operation_id,)).fetchone()
-        if not config or config['parametros'].get('natureza_dados') != 'simulados':
+        if not config or not (config['parametros'].get('natureza_dados') == 'simulados'
+                              or (local and config['parametros'].get('natureza_dados') == 'cadastro_real_local')):
             fail('DEMONSTRACAO_LOCAL_INDISPONIVEL', 403)
     return operation_id
 
@@ -523,3 +535,176 @@ app.mount('/painel', StaticFiles(directory=Path(__file__).resolve().parents[1] /
 def plan_pre_baked(body: planning.PlanoPreAssadas, u=Depends(user)):
     roles(u, 'gerente', 'ia')
     return planning.calculate(body)
+
+
+# Reposição e fornecedores: leitura por operação, escrita auditada pelo gerente.
+def purchasing_snapshot(operation_id):
+    with connect() as db:
+        db.commit()
+        db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        return purchasing.snapshot(db, operation_id)
+
+
+@app.get('/reposicao')
+def replenishment(u=Depends(user)):
+    roles(u, 'gerente', 'estoquista', 'ia')
+    return purchasing_snapshot(u['operacao_id'])
+
+
+@app.get('/demo/reposicao', include_in_schema=False)
+def demo_replenishment(operation_id: UUID = Depends(local_demo_operation)):
+    return purchasing_snapshot(operation_id)
+
+
+def demo_manager(request: Request, operation_id: UUID = Depends(local_demo_operation)):
+    # Escrita de demonstração exclusivamente local e JSON; nunca usa DEMO_ACESSO_REMOTO.
+    if (request.client.host not in {'127.0.0.1', '::1'}
+        or request.url.hostname not in {'127.0.0.1', 'localhost', '::1'}
+        or request.headers.get('content-type', '').split(';')[0] != 'application/json'):
+        fail('ESCRITA_LOCAL_INDISPONIVEL', 403)
+    with connect() as db:
+        row = db.execute("SELECT * FROM usuarios WHERE operacao_id=%s AND papel='gerente' AND ativo ORDER BY id LIMIT 1", (operation_id,)).fetchone()
+    if not row: fail('SEM_GERENTE_LOCAL', 403)
+    return row
+
+
+def supplier_write(body, u, supplier_id=None):
+    roles(u, 'gerente')
+    try:
+        with connect() as db:
+            lock_operation(db, u)
+            row = purchasing.save_supplier(db, u['operacao_id'], body, supplier_id)
+            audit(db, u, 'salvar_fornecedor', {'id': str(row['id'])})
+            return row
+    except psycopg.errors.UniqueViolation:
+        fail('FORNECEDOR_DUPLICADO', 409)
+
+
+@app.post('/fornecedores', status_code=201)
+def create_supplier(body: purchasing.Supplier, u=Depends(user)):
+    return supplier_write(body, u)
+
+
+@app.put('/fornecedores/{supplier_id}')
+def update_supplier(supplier_id: UUID, body: purchasing.Supplier, u=Depends(user)):
+    return supplier_write(body, u, supplier_id)
+
+
+@app.post('/demo/fornecedores', status_code=201, include_in_schema=False)
+def demo_create_supplier(body: purchasing.Supplier, u=Depends(demo_manager)):
+    return supplier_write(body, u)
+
+
+@app.put('/demo/fornecedores/{supplier_id}', include_in_schema=False)
+def demo_update_supplier(supplier_id: UUID, body: purchasing.Supplier, u=Depends(demo_manager)):
+    return supplier_write(body, u, supplier_id)
+
+
+def quote_write(body, u):
+    roles(u, 'gerente')
+    with connect() as db:
+        row = purchasing.save_quote(db, u['operacao_id'], body)
+        audit(db, u, 'salvar_cotacao', {'id': str(row['id'])})
+        return row
+
+
+@app.post('/cotacoes', status_code=201)
+def create_quote(body: purchasing.Quote, u=Depends(user)):
+    return quote_write(body, u)
+
+
+@app.post('/demo/cotacoes', status_code=201, include_in_schema=False)
+def demo_create_quote(body: purchasing.Quote, u=Depends(demo_manager)):
+    return quote_write(body, u)
+
+
+@app.post('/demo/insumos', status_code=201, include_in_schema=False)
+def demo_create_ingredient(body: Insumo, u=Depends(demo_manager)):
+    return create_ingredient(body, u)
+
+
+def recipe_write(product_id, body, u):
+    roles(u, 'gerente')
+    with connect() as db:
+        lock_operation(db, u)
+        product = db.execute('SELECT * FROM produtos WHERE id=%s AND operacao_id=%s FOR UPDATE',
+                             (product_id,u['operacao_id'])).fetchone()
+        if not product: fail('PRODUTO_NAO_ENCONTRADO',404)
+        if product['ativo'] or db.execute('SELECT 1 FROM venda_itens WHERE produto_id=%s LIMIT 1', (product_id,)).fetchone():
+            fail('FICHA_IMUTAVEL_CRIAR_NOVA_VERSAO',409)
+        for item in body.ingredientes:
+            if not db.execute('SELECT 1 FROM insumos WHERE id=%s AND operacao_id=%s', (item.insumo_id,u['operacao_id'])).fetchone():
+                fail('INSUMO_NAO_ENCONTRADO',404)
+        db.execute('DELETE FROM ingredientes WHERE produto_id=%s AND operacao_id=%s', (product_id,u['operacao_id']))
+        for item in body.ingredientes:
+            db.execute('INSERT INTO ingredientes VALUES(%s,%s,%s,%s)', (u['operacao_id'],product_id,item.insumo_id,item.quantidade))
+        details = {**product['ficha_detalhes'], 'status': 'validada' if body.validada else 'rascunho',
+                   'rendimento_porcoes': 1, 'preparo': body.preparo, 'observacoes': body.observacoes,
+                   'origem': 'Informada pelo responsável no cadastro', 'simulada': False}
+        row = db.execute('UPDATE produtos SET preco=%s,ativo=%s,ficha_detalhes=%s WHERE id=%s RETURNING *',
+                         (body.preco,body.validada,Jsonb(details),product_id)).fetchone()
+        audit(db,u,'salvar_ficha',{'produto_id':str(product_id),'validada':body.validada})
+        return row
+
+
+@app.put('/fichas/{product_id}')
+def update_recipe(product_id: UUID, body: Recipe, u=Depends(user)):
+    return recipe_write(product_id,body,u)
+
+
+@app.put('/demo/fichas/{product_id}', include_in_schema=False)
+def demo_update_recipe(product_id: UUID, body: Recipe, u=Depends(demo_manager)):
+    return recipe_write(product_id,body,u)
+
+
+@app.post('/demo/estoque/recebimentos', status_code=201, include_in_schema=False)
+def demo_receive(body: Recebimento, u=Depends(demo_manager)):
+    return receive(body, u)
+
+
+@app.get('/prontos')
+def get_ready(u=Depends(user)):
+    with connect() as db:
+        return ready_stock.snapshot(db,u['operacao_id'])
+
+
+@app.get('/demo/prontos', include_in_schema=False)
+def demo_get_ready(operation_id: UUID = Depends(local_demo_operation)):
+    with connect() as db:
+        return ready_stock.snapshot(db,operation_id)
+
+
+def ready_entry(body,u):
+    roles(u,'gerente','estoquista')
+    with connect() as db:
+        row=ready_stock.register(db,u,body)
+        audit(db,u,'registrar_porcoes_prontas',{'lote_id':str(row['id']),'origem':body.origem})
+        return row
+
+
+@app.post('/prontos/entradas',status_code=201)
+def ready_register(body:ready_stock.Entry,u=Depends(user)):
+    return ready_entry(body,u)
+
+
+@app.post('/demo/prontos/entradas',status_code=201,include_in_schema=False)
+def demo_ready_register(body:ready_stock.Entry,u=Depends(demo_manager)):
+    return ready_entry(body,u)
+
+
+def ready_waste(body,u):
+    roles(u,'gerente','estoquista')
+    with connect() as db:
+        row=ready_stock.discard(db,u,body)
+        audit(db,u,'descartar_porcoes_prontas',{'movimento_id':str(row['id'])})
+        return row
+
+
+@app.post('/prontos/perdas',status_code=201)
+def ready_discard(body:ready_stock.Waste,u=Depends(user)):
+    return ready_waste(body,u)
+
+
+@app.post('/demo/prontos/perdas',status_code=201,include_in_schema=False)
+def demo_ready_discard(body:ready_stock.Waste,u=Depends(demo_manager)):
+    return ready_waste(body,u)

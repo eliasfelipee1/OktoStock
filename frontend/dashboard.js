@@ -188,14 +188,14 @@ function render(data) {
   stock.append(bars(coverage.map((i) => ({ label: i.nome, value: Math.min(i.ratio, scale), cls: i.ratio < 1 ? 'alert' : '',
     color: COLOR.stockOk,
     text: i.ratio < 1 ? `Abaixo • ${number(i.ratio * 100)}%` : `${number(i.ratio)}×`,
-    tip: `${number(i.saldo)} ${i.unidade} (mínimo ${number(i.estoque_minimo)} ${i.unidade})` })), number, { max: scale, marker: 1 }),
-    dataTable(['Ingrediente', 'Saldo', 'Mínimo', 'Validade'], coverage.map((i) => [i.nome, `${number(i.saldo)} ${i.unidade}`, `${number(i.estoque_minimo)} ${i.unidade}`, i.validade ? day(i.validade) : '—'])));
+    tip: `${window.oktoQuantidade(i.saldo,i.unidade)} (mínimo ${window.oktoQuantidade(i.estoque_minimo,i.unidade)})` })), number, { max: scale, marker: 1 }),
+    dataTable(['Ingrediente', 'Saldo', 'Mínimo', 'Validade'], coverage.map((i) => [i.nome, `${window.oktoQuantidade(i.saldo,i.unidade)}`, `${window.oktoQuantidade(i.estoque_minimo,i.unidade)}`, i.validade ? day(i.validade) : '—'])));
 
   const losses = card('Perdas por ingrediente', 'Maiores custos de descarte no período');
   const topLosses = [...l.por_insumo].sort((a, b) => Number(b.custo) - Number(a.custo)).slice(0, 8);
-  losses.append(bars(topLosses.map((i) => ({ label: i.nome, value: i.custo, color: COLOR.losses, tip: `${number(i.quantidade)} ${i.unidade}, ${money(i.custo)}` })), money,
+  losses.append(bars(topLosses.map((i) => ({ label: i.nome, value: i.custo, color: COLOR.losses, tip: `${window.oktoQuantidade(i.quantidade,i.unidade)}, ${money(i.custo)}` })), money,
     { empty: 'Nenhuma perda registrada no período.' }),
-    dataTable(['Ingrediente', 'Quantidade', 'Custo'], topLosses.map((i) => [i.nome, `${number(i.quantidade)} ${i.unidade}`, money(i.custo)])));
+    dataTable(['Ingrediente', 'Quantidade', 'Custo'], topLosses.map((i) => [i.nome, `${window.oktoQuantidade(i.quantidade,i.unidade)}`, money(i.custo)])));
 
   const recent = card('Últimas vendas', 'As mais recentes primeiro', true);
   const table = node('table', null, 'recent-table');
@@ -235,7 +235,7 @@ async function load() {
       const simulated = data.contexto.parametros.natureza_dados === 'simulados';
       document.querySelector('.demo-badge').textContent = simulated ? 'DEMONSTRAÇÃO • DADOS SIMULADOS' : 'DADOS DA OPERAÇÃO';
       lastUpdate = new Date();
-      status.textContent = `Período: ${day(data.periodo.inicio)} a ${day(data.periodo.fim)} • última atualização às ${lastUpdate.toLocaleTimeString('pt-BR')}.` +
+      status.textContent = `Período: ${day(data.periodo.inicio)} a ${day(data.periodo.fim)} • última atualização às ${lastUpdate.toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'})}.` +
         (simulated ? ' Registros simulados para demonstração.' : '');
       render(data);
       dash.classList.remove('flash'); void dash.offsetWidth; dash.classList.add('flash');
@@ -259,6 +259,6 @@ function listen() {
 }
 
 load();
-listen();
+window.addEventListener('okto:estoque', () => {setLive('online','Atualização automática'); load();});
 // Rede de segurança: mesmo sem avisos, recarrega a cada 2 minutos.
 setInterval(() => { if (!lastUpdate || Date.now() - lastUpdate > 110000) load(); }, 120000);

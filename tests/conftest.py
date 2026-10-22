@@ -36,3 +36,9 @@ def setup(monkeypatch):
         with psycopg.connect(url) as db:
             db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
 
+
+
+@pytest.fixture(autouse=True)
+def disable_background_monitor(monkeypatch):
+    # Os testes de integração chamam refresh_all explicitamente quando necessário.
+    monkeypatch.setenv('OTTO_MONITOR_ATIVO', '0')

@@ -79,3 +79,13 @@ O texto completo fornecido pelo usuário está em `OTTO_REQUISITOS.md`, com o no
 Atualização: perdas por receita e total implementadas, com migration 002 e integração de agrupamentos no contexto do Otto. Leia `PERDAS.md` para distinguir descarte físico ainda não baixado de consumo já registrado em venda.
 
 O contexto inclui `operacao` com premissas, vendas por dia, ranking de porções e preferência do relatório dominical. Veja [base okto](DEMONSTRACAO_OKTO.md).
+
+
+## Alertas de reposição e propostas cadastradas
+
+O Otto recebe `reposicao`, com a meta de 50 porções de cada sabor, fichas pendentes,
+alertas por ingrediente e a melhor proposta calculada pelo servidor. O histórico
+de consumo continua separado da meta de estoque; os dois valores não são somados.
+O módulo determinístico grava alertas internos sem chamar o provedor. A IA continua
+somente em leitura: não cria compras nem modifica saldos. Veja
+[regra, cadastro e limitações](REPOSICAO_FORNECEDORES.md).

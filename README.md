@@ -108,7 +108,7 @@ Cobertura: FEFO, custo histórico, rollback, venda duplicada e concorrente, disp
 
 Implementado: insumos, ficha técnica por produto/versão, lotes, recebimento, turnos, venda com pagamentos informados, FEFO, perdas, estorno interno, disponibilidade, relatórios e tokens por papel/operação.
 
-Ainda não implementado: fluxos de cadastro e edição pelo frontend, login interativo, adicionais, descontos, conversão de embalagens, produção de insumos preparados, pedidos de compra, confirmação de pagamentos no provedor, devolução financeira automática, conciliação de caixa completa, sincronização offline e modelos preditivos treinados. Os endpoints rejeitam campos desconhecidos para não ignorar recursos ainda indisponíveis.
+Ainda não implementado: cadastro completo de toda a operação pelo frontend (fichas, insumos, recebimentos e fornecedores já disponíveis), login interativo, adicionais, descontos, conversão de embalagens, produção de insumos preparados, pedidos de compra, confirmação de pagamentos no provedor, devolução financeira automática, conciliação de caixa completa, sincronização offline e modelos preditivos treinados. Os endpoints rejeitam campos desconhecidos para não ignorar recursos ainda indisponíveis.
 
 Esta base é para desenvolvimento do MVP. Antes de exposição pública, separar usuário de migrations do usuário runtime, configurar HTTPS, gestão de identidade/expiração de credenciais, limites de requisição, backups e observabilidade. O banco não deve ser acessível pelos frontends: as permissões por barraca são aplicadas pela API, sem RLS nesta versão. Relatórios ainda não têm paginação/filtros de período; devem recebê-los antes de grande volume.
 
@@ -147,3 +147,21 @@ A produção que transforma batata crua em lotes pré-assados ainda precisa ser 
 ## Base de demonstração okto
 
 Carga simulada e contexto operacional agora disponíveis, com 75% da receita de quinta a domingo, reforço no feriado e prazo de pré-preparo. O Otto está conectado à API pelo botão flutuante; a preferência pelo relatório de domingo continua disponível na API (sem envio automático). Consulte [instruções e limitações](docs/DEMONSTRACAO_OKTO.md). O botão do Otto usa `frontend/otto.js`; as telas carregam dados com `frontend/painel.js`.
+
+## Quatro sabores, fornecedores e avisos do Otto
+
+O painel agora oferece cadastro das fichas reais de Linguiça Blumenau, Strogonoff de
+frango, Bolonhesa e Vegetariana, fornecedores/cotações e recebimentos. Os alertas de
+reposição consideram insumos para **50 porções de cada sabor**, somando ingredientes
+compartilhados e excluindo lotes vencidos. O comparativo usa embalagens inteiras, pedido
+mínimo e frete. Consulte [configuração, regras e pendências](docs/REPOSICAO_FORNECEDORES.md).
+Fichas, saldos e os três fornecedores reais ainda precisam ser informados pelo responsável.
+
+
+### Regra atual de pronta entrega
+
+A operação atual usa 250 porções por sabor de segunda a quarta, e 1.000 de quinta a
+domingo. Otto alerta estritamente abaixo de 30% (75/300). O controle separa lotes
+prontos e ingredientes, com produção, venda e descarte sem dupla baixa. As quatro
+receitas fornecidas foram importadas e as imagens/fichas restauradas. Consulte
+[descritivo e proposta de valor do OktoStock](docs/PRODUTO.md).

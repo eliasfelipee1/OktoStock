@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from app.db import connect
 from app.losses import report
 from app.operation_context import read
+from app.ready_stock import snapshot as ready_snapshot
 
 WEEKDAYS = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira',
             'sexta-feira', 'sábado', 'domingo']
@@ -64,12 +65,13 @@ def load(operation_id, page=1, start=None, end=None, product=None, payment=None,
         context['receita_total_periodo'], context['receita_quinta_a_domingo'] = total, high
         context['percentual_receita_quinta_a_domingo'] = high * 100 / total if total else None
         stock = db.execute('''SELECT i.id,i.nome,i.unidade,i.estoque_minimo,
+            (SELECT e.minimo FROM estoque_reposicao e WHERE e.operacao_id=i.operacao_id AND e.insumo_id=i.id) AS minimo_50_por_sabor,
             coalesce(sum(l.saldo) FILTER(WHERE l.validade>=CURRENT_DATE),0) AS saldo,
             coalesce(sum(l.saldo) FILTER(WHERE l.validade<CURRENT_DATE),0) AS vencido,
             min(l.validade) FILTER(WHERE l.saldo>0 AND l.validade>=CURRENT_DATE) AS validade
             FROM insumos i LEFT JOIN lotes l ON l.insumo_id=i.id AND l.operacao_id=i.operacao_id
             WHERE i.operacao_id=%s GROUP BY i.id ORDER BY i.nome''', (operation_id,)).fetchall()
-        products = db.execute('SELECT id,nome,preco,versao,ativo FROM produtos WHERE operacao_id=%s ORDER BY nome',
+        products = db.execute("SELECT id,nome,preco,versao,ativo,ficha_detalhes FROM produtos WHERE operacao_id=%s AND (ativo OR ficha_detalhes->>'cardapio_atual'='true') ORDER BY nome",
                               (operation_id,)).fetchall()
         recipes = db.execute('''SELECT r.produto_id,r.quantidade,i.nome,i.unidade,c.custo_unitario
             FROM ingredientes r JOIN insumos i ON i.id=r.insumo_id AND i.operacao_id=r.operacao_id
@@ -95,9 +97,9 @@ def load(operation_id, page=1, start=None, end=None, product=None, payment=None,
             FROM vendas v WHERE {where} ORDER BY v.criado_em DESC,v.id LIMIT 50 OFFSET %s''',
             args + [(page-1)*50]).fetchall()
         losses = report(db, operation_id, start, end)
-        for row in losses['registros']:
+        for row in losses['registros']+losses['perdas_prontas']:
             row.pop('usuario_id', None)
-        return {'operacao': operation, 'periodo': period, 'periodo_total': bounds, 'contexto': context,
+        return {'prontos': ready_snapshot(db, operation_id), 'operacao': operation, 'periodo': period, 'periodo_total': bounds, 'contexto': context,
                 'filtros': {'inicio': start, 'fim': end, 'produto_id': product, 'forma': payment,
                             'dia_semana': weekday},
                 'formas_pagamento': payments, 'por_pagamento': by_payment, 'por_hora': by_hour,

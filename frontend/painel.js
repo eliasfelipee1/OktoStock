@@ -33,7 +33,7 @@ function metrics(items) {
   return wrap;
 }
 function stockTable(rows) {
-  return table(['Ingrediente','Saldo utilizável','Vencido','Mínimo','Validade mais próxima'],rows.map(i => [i.nome,number(i.saldo)+' '+i.unidade,number(i.vencido)+' '+i.unidade,number(i.estoque_minimo)+' '+i.unidade,date(i.validade)]));
+  return table(['Ingrediente','Saldo utilizável','Vencido','Insumos para completar a meta','Validade mais próxima'],rows.map(i => [i.nome,window.oktoQuantidade(i.saldo,i.unidade),window.oktoQuantidade(i.vencido,i.unidade),i.minimo_50_por_sabor==null?'Aguardando ficha':window.oktoQuantidade(i.minimo_50_por_sabor,i.unidade),date(i.validade)]));
 }
 function ranking(data) {
   const s=panel('Desempenho por sabor','Porções efetivamente vendidas');
@@ -46,6 +46,7 @@ function daily(data) {
 function render(data) {
   root.replaceChildren();
   const r=data.resumo, c=data.contexto;
+  if(['index','estoque','producao'].includes(page)&&data.prontos?.sabores.length&&window.oktoReadyPanel)root.append(window.oktoReadyPanel(data.prontos));
   if (page==='index' || page==='vendas') {
     root.append(metrics([['Receita de vendas',money(r.receita),'Vendas confirmadas'],['Custo de ingredientes',money(r.custo),'Custo histórico, não custo total'],['Margem sobre ingredientes',money(Number(r.receita)-Number(r.custo)),'Não representa lucro líquido'],['Porções vendidas',number(r.porcoes),number(r.vendas)+' vendas cadastradas']]));
     root.append(daily(data),ranking(data));
@@ -59,19 +60,34 @@ function render(data) {
     }
   }
   if(page==='estoque') {
+    if(window.oktoReceiptEditor)root.append(window.oktoReceiptEditor(data.estoque));
     const rows=filteredStock(data.estoque);
-    root.append(metrics([['Insumos',number(data.estoque.length),'Ingredientes cadastrados'],['Abaixo do mínimo',number(data.estoque.filter(i=>Number(i.saldo)<Number(i.estoque_minimo)).length),'Considera apenas saldo utilizável']]));
-    const s=panel('Estoque por ingrediente',`${rows.length} de ${data.estoque.length} ingredientes • quantidades em g, ml ou un • lotes vencidos separados do saldo utilizável`);s.append(stockTable(rows));root.append(s);
+    root.append(metrics([['Insumos',number(data.estoque.length),'Ingredientes cadastrados'],['Abaixo do mínimo',number(data.estoque.filter(i=>i.minimo_50_por_sabor!=null&&Number(i.saldo)<Number(i.minimo_50_por_sabor)).length),'Planejamento de insumos para completar a meta de porções prontas']]));
+    const s=panel('Estoque por ingrediente',`${rows.length} de ${data.estoque.length} ingredientes • quantidades em g/kg, ml/L ou un • lotes vencidos separados do saldo utilizável`);s.append(stockTable(rows));root.append(s);
   }
   if(page==='receitas') {
     const cards=node('div',null,'cards live-recipes');
     const recipes=data.produtos.filter(p=>(!filters.produto||p.id===filters.produto)&&(!filters.ingrediente||p.ingredientes.some(i=>matches(i.nome,filters.ingrediente))));
     recipes.forEach(p=>{
-      const s=panel(p.nome,`Versão ${p.versao} • ${p.ativo?'Ativo':'Inativo'}`);
-      const body=node('div',null,'panel-body');body.append(node('p','Preço de venda: '+money(p.preco)));
+      const s=panel(p.nome,`Versão ${p.versao} • ${p.ativo?'Ficha validada':'Aguardando receita real / validação'}`);
+      const details=p.ficha_detalhes||{};
+      if(details.foto){
+        const figure=node('figure',null,'recipe-photo');const img=document.createElement('img');
+        img.src='assets/batatas/'+details.foto;img.alt='Foto ilustrativa de batata recheada: '+p.nome;img.loading='lazy';
+        const caption=node('figcaption','Foto de referência · ');const credit=node('a',details.credito||'Fonte');credit.href=details.foto_fonte;credit.target='_blank';credit.rel='noopener noreferrer';caption.append(credit);figure.append(img,caption);s.prepend(figure);
+      }
+      const body=node('div',null,'panel-body');body.append(node('p','Rendimento: 1 porção · ficha fornecida pelo responsável.'));
+      body.append(node('p','Preço de venda: '+money(p.preco)));
       body.append(node('p','Custo estimado dos ingredientes: '+money(p.custo_estimado)));
       body.append(node('p','Estimativa pelo último custo cadastrado; exclui mão de obra, impostos e embalagem.','subtext'));
-      s.append(body,table(['Ingrediente','Quantidade por porção'],p.ingredientes.map(i=>[i.nome,number(i.quantidade)+' '+i.unidade])));cards.append(s);
+      if(details.batata_bruta_g)body.append(node('p','Batata: 450 g bruta → 380 g utilizável · perda de limpeza 15,56% · fator de correção 1,184211.'));
+      if(details.alergenicos)body.append(node('p','Alergênicos: '+details.alergenicos));
+      if(details.atributos)body.append(node('p',details.atributos));
+      if(p.ficha_detalhes?.preparo) body.append(node('p','Preparo: '+p.ficha_detalhes.preparo));
+      if(p.ficha_detalhes?.observacoes) body.append(node('p',p.ficha_detalhes.observacoes));
+      if(!p.ingredientes.length)body.append(node('p','Quantidades, rendimento e preparo aguardam informação do responsável. Nenhum ingrediente foi presumido.'));
+      s.append(body,table(['Ingrediente','Quantidade por porção'],p.ingredientes.map(i=>[i.nome,window.oktoQuantidade(i.quantidade,i.unidade)+(i.nome==='Batata inglesa'?' bruta / 380 g líquida':'')])));if(details.foto){const download=node('a','Baixar imagem com a ficha técnica','button recipe-download');download.href='assets/fichas/'+details.foto.replace(/\.[^.]+$/,'.png');download.download='Ficha-'+p.nome+'.png';s.append(download);}
+      if(!p.ativo && window.oktoRecipeEditor)s.append(window.oktoRecipeEditor(p,data.estoque));cards.append(s);
     });
     if(!recipes.length)cards.append(node('p',data.produtos.length?'Nenhuma ficha corresponde aos filtros.':'Nenhuma ficha cadastrada.'));root.append(cards);
   }
@@ -81,19 +97,15 @@ function render(data) {
     const byRecipe=panel('Perdas por receita','Descartes sem receita não são atribuídos a sabores');byRecipe.id='perdas-por-receita';
     byRecipe.append(table(['Receita','Porções','Custo'],l.por_receita.map(i=>[i.nome,number(i.porcoes_registradas),money(i.custo)])));
     const lossItems=l.por_insumo.filter(i=>!filters.insumo||i.nome===filters.insumo), lossRows=l.registros.filter(i=>!filters.insumo||i.insumo===filters.insumo);
-    const byItem=panel('Perdas por ingrediente'); byItem.append(table(['Ingrediente','Quantidade','Custo'],lossItems.map(i=>[i.nome,number(i.quantidade)+' '+i.unidade,money(i.custo)])));
-    const history=panel('Histórico de perdas',`${lossRows.length} movimentos no período`);history.append(table(['Data','Ingrediente','Quantidade','Motivo','Custo'],lossRows.map(i=>[date(i.criado_em),i.insumo,number(i.quantidade)+' '+i.unidade,i.motivo,money(i.custo)])));
+    const byItem=panel('Perdas por ingrediente'); byItem.append(table(['Ingrediente','Quantidade','Custo'],lossItems.map(i=>[i.nome,window.oktoQuantidade(i.quantidade,i.unidade),money(i.custo)])));
+    const history=panel('Histórico de perdas',`${lossRows.length} movimentos no período`);history.append(table(['Data','Ingrediente','Quantidade','Motivo','Custo'],lossRows.map(i=>[date(i.criado_em),i.insumo,window.oktoQuantidade(i.quantidade,i.unidade),i.motivo,money(i.custo)])));
     root.append(byRecipe,byItem,history);
+    if(l.perdas_prontas?.length){const ready=panel('Descarte de porções prontas','Custo do lote pronto; sem repetir baixa de ingredientes');ready.append(table(['Data','Sabor','Porções','Motivo','Custo'],l.perdas_prontas.map(x=>[date(x.criado_em),x.produto_nome,number(x.porcoes),x.motivo,money(x.custo)])));root.append(ready);}
   }
   if(page==='producao') {
-    const p=c.parametros; const prep=p.pre_preparo;
-    root.append(metrics([['Prazo de pré-preparo',prep?'Quarta à noite':'Não informado','Regra cadastrada pelo dono'],['Público total da festa',number(p.publico_total_festa),'Não é a clientela da barraca'],['Receita de quinta a domingo',number(c.percentual_receita_quinta_a_domingo)+'%','Percentual medido no histórico']]));
-    const s=panel('Planejamento de pré-preparo','Parâmetros da operação');const body=node('div',null,'panel-body');
-    body.append(node('p',prep?.regra || 'Cadastre as regras de pré-preparo.'));
-    body.append(node('p',p.feriado?.regra || 'Sem regra de feriado cadastrada.'));
-    body.append(node('p','Ainda não há registro de execução de produção, capacidade do forno ou validade por preparo. O estoque de ingredientes não representa batatas já pré-assadas.'));
-    body.append(node('p','Preparar até quarta não garante conservação até domingo; a quantidade depende das restrições de cada preparo.'));
-    s.append(body);root.append(s,ranking(data));
+    if(window.oktoReadyForms)root.append(window.oktoReadyForms(data.prontos,data.produtos));
+    const s=panel('Produção e pronta entrega','O registro de produção baixa os ingredientes uma única vez; a venda baixa as porções prontas.');
+    s.append(table(['Sabor','Lote','Saldo pronto','Validade'],data.prontos.lotes.map(l=>[l.nome,l.codigo,number(l.saldo),date(l.validade)+' '+hour(l.validade)])));root.append(s);
   }
 }
 // Filtros: os do servidor recarregam os dados; os do navegador só redesenham a tela.
@@ -101,7 +113,6 @@ const SERVER_FILTERS=['inicio','fim','dia_semana','produto_id','forma'];
 const PAGE_FILTERS={
   index:['inicio','fim','dia_semana','produto_id','forma'],
   vendas:['inicio','fim','dia_semana','produto_id','forma'],
-  producao:['inicio','fim','dia_semana','produto_id'],
   perdas:['inicio','fim','insumo'],
   estoque:['busca','situacao'],
   receitas:['produto','ingrediente'],
@@ -118,8 +129,8 @@ function isoDay(offset){return new Date(Date.now()+offset*864e5).toLocaleDateStr
 function filteredStock(rows){
   const today=isoDay(0), soon=isoDay(2);
   return rows.filter(i=>(!filters.busca||matches(i.nome,filters.busca))&&(
-    !filters.situacao||(filters.situacao==='abaixo'&&Number(i.saldo)<Number(i.estoque_minimo))
-    ||(filters.situacao==='ok'&&Number(i.saldo)>=Number(i.estoque_minimo))
+    !filters.situacao||(filters.situacao==='abaixo'&&i.minimo_50_por_sabor!=null&&Number(i.saldo)<Number(i.minimo_50_por_sabor))
+    ||(filters.situacao==='ok'&&i.minimo_50_por_sabor!=null&&Number(i.saldo)>=Number(i.minimo_50_por_sabor))
     ||(filters.situacao==='vencido'&&Number(i.vencido)>0)
     ||(filters.situacao==='vence'&&i.validade&&i.validade>=today&&i.validade<=soon)));
 }
@@ -203,3 +214,10 @@ async function load(pagina=1) {
   } catch(error) {root.replaceChildren();status.textContent=error.message;}
 }
 load();
+
+// Um evento do PostgreSQL atualiza estoque e fichas; não interrompe formulários em edição.
+let liveReload;
+window.addEventListener('okto:estoque',()=>{
+  if(document.querySelector('.recipe-editor[open], .stock-editor[open], .ready-editor[open]') || document.activeElement?.closest('.recipe-editor'))return;
+  clearTimeout(liveReload);liveReload=setTimeout(()=>load(lastData?.pagina||1),250);
+});

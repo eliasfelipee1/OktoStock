@@ -1,0 +1,9 @@
+{
+ "consultado_em": "2026-10-22",
+ "observacao": "Preços públicos consultados nos sites das redes. A presença da rede em Blumenau foi verificada, mas preço por loja/CEP, frete, prazo, mínimo comercial e validade não foram confirmados. Não representam propostas locais aprovadas.",
+ "fornecedores": [
+  {"nome":"Bistek — Blumenau","cidade":"Blumenau/SC","fonte_url":"https://institucional.bistek.com.br/lojas","contato":"Consultar loja Garcia ou Shopping Park Europeu pelo site oficial","preco":"4.99","quantidade":"1000","produto":"Batata Econômica 1 Kg Pct","url":"https://www.bistek.com.br/batata-economica-1-kg-pct-1736582/p","metodo":"Preço exibido na página pública do produto"},
+  {"nome":"Angeloni — Blumenau","cidade":"Blumenau/SC","fonte_url":"https://www.agreco.com.br/pontos-de-venda/","contato":"Loja Velha — Rua Humberto de Campos, 77; confirmar condições na loja","preco":"8.49","quantidade":"1000","produto":"Batata Lavada Kg","url":"https://super.angeloni.com.br/batata-lavada-kg-43/p","metodo":"Preço por kg retornado pelo catálogo público da loja: /api/catalog_system/pub/products/search/?ft=batata; preço dependente da região"},
+  {"nome":"Atacadão — Blumenau","cidade":"Blumenau/SC","fonte_url":"https://www.blumenaunorteshopping.com.br/detalhes-loja/atacadao/","contato":"Norte Shopping — Rodovia BR-470, 3000, Salto Norte; confirmar condições na loja","preco":"42.90","quantidade":"10000","produto":"Batata Lavada 10kg","url":"https://www.atacadao.com.br/batata-lavada-saco-com-10kg-12887/p","metodo":"Preço exibido na página pública com CEP padrão 02170-901 (não é confirmação de preço em Blumenau)"}
+ ]
+}
