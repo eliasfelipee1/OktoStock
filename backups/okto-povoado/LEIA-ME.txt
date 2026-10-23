@@ -1,0 +1,64 @@
+OKTOSTOCK: BACKUP DO BANCO POVOADO (dados SIMULADOS, sem credenciais)
+=====================================================================
+
+O QUE E
+Copia do banco PostgreSQL do OktoStock com dados de DEMONSTRACAO SIMULADOS.
+Formato custom do pg_dump, gerado com PostgreSQL 18.6.
+NAO sao vendas reais. Os tokens dos usuarios foram NEUTRALIZADOS antes de publicar:
+nenhum token funciona com este backup. Crie o seu (passo 5).
+
+ARQUIVOS
+- okto.backup   : o backup (formato custom do PostgreSQL 18)
+- SHA256SUMS    : hash para conferir a integridade da copia
+- operacao.txt  : o ID da operacao que o painel deve usar
+
+O QUE TEM DENTRO
+Duas operacoes separadas (mantenha a separacao):
+1) "OktoStock - quatro sabores" (a que o painel deve mostrar; ID no operacao.txt)
+   4 sabores com fichas e fotos, 3 fornecedores, 6 cotacoes de referencia publica,
+   1.280 vendas simuladas (3.200 porcoes, receita R$ 111.680), 450 lotes, 420 perdas.
+   As contagens fisicas da pronta entrega continuam PENDENTES (nao foram inventadas).
+   Os precos de venda e o historico de vendas, lotes e perdas sao simulados.
+2) "Okto - demonstracao simulada 2026": historico antigo (5 produtos, 1.600 vendas).
+O backup inclui as migrations 001 a 008.
+
+NAO ESTAO INCLUIDOS
+Senhas de banco, tokens de usuario e a chave da Anthropic.
+O Otto so responde com ANTHROPIC_API_KEY configurada no .env (nunca no Git).
+Peca a chave ao responsavel, por canal privado.
+
+COMO RESTAURAR (Linux, PostgreSQL 18)
+Precisa do pg_restore da versao 17 ou mais nova (o do 16 nao le este formato).
+Use um banco NOVO e VAZIO. Nao use --clean nem --create sobre banco existente.
+
+1) Confira a integridade (dentro desta pasta):
+   sha256sum -c SHA256SUMS
+
+2) Crie o usuario e o banco (ajuste a porta se o cluster 18 nao for a 5432):
+   sudo -u postgres createuser --login --pwprompt oktostock
+   sudo -u postgres createdb --owner=oktostock --template=template0 okto
+
+3) Restaure:
+   pg_restore --host=127.0.0.1 --port=5432 --username=oktostock --password \
+     --dbname=okto --no-owner --no-privileges --exit-on-error --single-transaction okto.backup
+   (codigo de saida 0 e nenhuma mensagem de erro = sucesso)
+
+4) No .env do projeto (nunca comite este arquivo):
+   DATABASE_URL=postgresql://oktostock:SENHA@127.0.0.1:5432/okto
+   LOCAL_DEMO_OPERATION_ID=<o valor do operacao.txt>
+   ANTHROPIC_API_KEY=<chave fornecida separadamente>
+   (veja o .env.example do projeto para as demais variaveis)
+
+5) Aplique so migrations pendentes (nao altere as antigas) e crie o seu usuario:
+   .venv/bin/python -m scripts.migrate
+   .venv/bin/python -m scripts.create_user --nome "Seu Nome" --papel gerente \
+     --operacao c04f1a40-5050-4040-8050-000000000004
+   (o token aparece uma unica vez; guarde-o. O painel em modo demonstracao nao precisa dele,
+    mas a API em /docs sim)
+
+6) Inicie e abra:
+   .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+   http://127.0.0.1:8000/painel/
+
+Esta e uma copia na data de geracao; alteracoes feitas depois no banco original nao aparecem aqui.
+Para recriar dados equivalentes do zero, use: python -m scripts.seed_okto
