@@ -13,11 +13,12 @@ CREATE TABLE contagens (
 );
 CREATE INDEX contagens_lote ON contagens(operacao_id,lote_id,criado_em);
 
+-- Ao recriar as regras, manter todos os tipos ja aceitos (006 acrescentou 'producao'); omitir um quebraria aquele fluxo.
 ALTER TABLE movimentacoes DROP CONSTRAINT movimentacoes_tipo_check;
 ALTER TABLE movimentacoes DROP CONSTRAINT movimentacoes_check;
-ALTER TABLE movimentacoes ADD CONSTRAINT movimentacoes_tipo_check CHECK(tipo IN ('entrada','venda','perda','ajuste'));
+ALTER TABLE movimentacoes ADD CONSTRAINT movimentacoes_tipo_check CHECK(tipo IN ('entrada','venda','perda','producao','ajuste'));
 ALTER TABLE movimentacoes ADD CONSTRAINT movimentacoes_check CHECK(
- (tipo='entrada' AND quantidade>0) OR (tipo IN ('venda','perda') AND quantidade<0) OR (tipo='ajuste' AND quantidade<>0));
+ (tipo='entrada' AND quantidade>0) OR (tipo IN ('venda','perda','producao') AND quantidade<0) OR (tipo='ajuste' AND quantidade<>0));
 
 ALTER TABLE movimentacoes ADD COLUMN contagem_id uuid;
 ALTER TABLE movimentacoes ADD CONSTRAINT movimento_contagem_fk FOREIGN KEY(operacao_id,contagem_id) REFERENCES contagens(operacao_id,id);
