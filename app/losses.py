@@ -42,6 +42,8 @@ def register(u, body, recipe=False):
                 fail('TURNO_NAO_ENCONTRADO', 404)
         selected = []
         if recipe:
+            if product and product['ficha_detalhes'].get('controle_prontos'):
+                fail('USE_DESCARTE_DE_LOTE_PRONTO')
             ingredients = db.execute('SELECT * FROM ingredientes WHERE produto_id=%s ORDER BY insumo_id',
                                      (body.produto_id,)).fetchall()
             if not ingredients:
@@ -114,6 +116,13 @@ def report(db, operation_id, start=None, end=None, shift_id=None):
         WHERE m.operacao_id=%s AND m.tipo='perda' AND m.criado_em>=%s::date AND m.criado_em<%s::date
         AND (%s::uuid IS NULL OR p.turno_id=%s::uuid) ORDER BY m.criado_em,m.id''',
         (operation_id, start, until, shift_id, shift_id)).fetchall()
+    ready_rows = db.execute('''SELECT m.id,m.criado_em,m.motivo,m.usuario_id,m.lote_id,
+        p.id AS produto_id,p.nome AS produto_nome,p.versao AS produto_versao,
+        -m.quantidade AS porcoes,-m.quantidade*l.custo_unitario AS custo
+        FROM movimentos_prontos m JOIN lotes_prontos l ON l.id=m.lote_id AND l.operacao_id=m.operacao_id
+        JOIN produtos p ON p.id=l.produto_id AND p.operacao_id=l.operacao_id
+        WHERE m.operacao_id=%s AND m.tipo='perda' AND m.criado_em>=%s::date AND m.criado_em<%s::date
+        AND %s::uuid IS NULL ORDER BY m.criado_em,m.id''',(operation_id,start,until,shift_id)).fetchall()
     sales = db.execute('''SELECT COALESCE(sum(total),0) AS faturamento_bruto,
         COALESCE(sum(total) FILTER(WHERE status='confirmada'),0) AS receita_confirmada,
         COALESCE(sum(custo),0) AS custo_ingredientes_vendidos FROM vendas
@@ -140,11 +149,18 @@ def report(db, operation_id, start=None, end=None, shift_id=None):
         ingredients[k]['custo'] += row['custo']
         units[row['unidade']] += row['quantidade']
         reasons[row['motivo']] += row['custo']
-    total = sum((r['custo'] for r in rows), Decimal(0))
+    for row in ready_rows:
+        key=row['produto_id']
+        if key not in groups:
+            groups[key]={'produto_id':key,'nome':row['produto_nome'],'versao':row['produto_versao'],
+                'custo':Decimal(0),'porcoes_registradas':Decimal(0),'quantidades':defaultdict(Decimal)}
+        groups[key]['custo']+=row['custo'];groups[key]['porcoes_registradas']+=row['porcoes']
+        groups[key]['quantidades']['un']+=row['porcoes'];units['un']+=row['porcoes'];reasons[row['motivo']]+=row['custo']
+    total = sum((r['custo'] for r in rows+ready_rows), Decimal(0))
     def percent(value):
         return (total/value*100).quantize(Decimal('0.01')) if value else None
     return {'periodo': {'inicio': start, 'fim_inclusivo': end}, 'turno_id': shift_id,
-        'sem_registros': not rows, 'custo_total_perdas': total,
+        'perdas_prontas': ready_rows, 'sem_registros': not rows and not ready_rows, 'custo_total_perdas': total,
         'porcoes_perdidas_registradas': sum((g['porcoes_registradas'] for g in groups.values()), Decimal(0)), 'quantidades_por_unidade': dict(units),
         **sales, 'percentual_sobre_faturamento_bruto': percent(sales['faturamento_bruto']),
         'percentual_sobre_receita_confirmada': percent(sales['receita_confirmada']),

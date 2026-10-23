@@ -16,6 +16,8 @@ def setup(monkeypatch):
     url = os.getenv('TEST_DATABASE_URL')
     if not url:
         pytest.skip('Defina TEST_DATABASE_URL para executar testes PostgreSQL reais')
+    # Testes partem do padrão seguro, independente do .env local.
+    monkeypatch.delenv('DEMO_ACESSO_REMOTO', raising=False)
     schema = 'test_' + uuid4().hex
     with psycopg.connect(url) as db:
         db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
@@ -34,3 +36,9 @@ def setup(monkeypatch):
         with psycopg.connect(url) as db:
             db.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(schema)))
 
+
+
+@pytest.fixture(autouse=True)
+def disable_background_monitor(monkeypatch):
+    # Os testes de integração chamam refresh_all explicitamente quando necessário.
+    monkeypatch.setenv('OTTO_MONITOR_ATIVO', '0')

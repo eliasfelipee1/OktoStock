@@ -38,6 +38,11 @@
               <rect x="3" y="14" width="7" height="7" rx="1" />
               <rect x="14" y="14" width="7" height="7" rx="1" /></svg
             ><span>Visão geral</span></a
+          ><a href="dashboard.html" aria-label="Dashboard"
+            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3v18h18" />
+              <path d="M7 15v3M11 10v8M15 12v6M19 6v12" /></svg
+            ><span>Dashboard</span></a
           ><a href="estoque.html" aria-label="Estoque"
             ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -56,12 +61,6 @@
                 d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"
               /></svg
             ><span>Fichas técnicas</span></a
-          ><a href="agente.html" aria-label="Otto · assistente IA"
-            ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"
-              /></svg
-            ><span>Otto · assistente IA</span><span class="nav-tag">IA</span></a
           >
           <a href="perdas.html" aria-label="Perdas"
             ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -108,19 +107,14 @@
         <div class="content">
           <section class="heading">
             <div>
-              <p class="eyebrow">DECISÃO DO DONO</p>
-              <h1>Quanto pré-assar agora?</h1>
+              <p class="eyebrow">METAS POR SABOR</p>
+              <h1>Produção e pronta entrega</h1>
               <p class="subtext">
-                Atender o movimento sem transformar antecipação em desperdício.
+                Acompanhe porções prontas, registre produção e receba alertas abaixo de 30%.
               </p>
             </div>
           </section>
           <div class="notice" id="connection-status" role="status">Carregando dados da operação…</div>
-          <form id="panel-login" class="panel panel-body" hidden>
-            <label for="panel-token">Token de usuário do OktoStock</label>
-            <input id="panel-token" type="password" autocomplete="off" required />
-            <button class="button primary" type="submit">Conectar</button>
-          </form>
           <div id="live-content" aria-live="polite"></div>
           <noscript>Ative o JavaScript para consultar os registros da operação.</noscript>
           <footer class="footer">
@@ -130,6 +124,10 @@
         </div>
       </main>
     </div>
+    <script src="unidades.js" defer></script>
+    <script src="otto.js" defer></script>
+    <script src="reposicao.js" defer></script>
+    <script src="prontos.js" defer></script>
     <script src="painel.js" defer></script>
   </body>
 </html>
