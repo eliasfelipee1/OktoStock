@@ -1,0 +1,29 @@
+OKTOSTOCK: BANCO DE DEMONSTRACAO PARA MAC (dados SIMULADOS, sem credenciais)
+=============================================================================
+Mesmo conteudo de ../okto-povoado/, mas em SQL puro (okto.sql). Funciona com
+qualquer PostgreSQL 14 ou mais novo, sem precisar do pg_restore 17+.
+Tokens de usuario neutralizados; nao ha chave da Anthropic nem senha.
+
+COMO RESTAURAR (Terminal do Mac)
+1) Instale e inicie o PostgreSQL (uma vez):
+     brew install postgresql@16
+     brew services start postgresql@16
+     export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"   # Mac Intel: /usr/local/opt/...
+2) Na pasta do projeto:
+     bash backups/okto-povoado-mac/restaurar-mac.sh
+   (confere o hash, cria o banco "okto" e carrega tudo; o final mostra as linhas do .env)
+3) No .env do projeto (nunca comite):
+     DATABASE_URL=postgresql://SEU_USUARIO_MAC@127.0.0.1:5432/okto
+     LOCAL_DEMO_OPERATION_ID=c04f1a40-5050-4040-8050-000000000004
+     ANTHROPIC_API_KEY=<chave pedida por canal privado, para o Otto>
+4) Aplique migrations pendentes e inicie:
+     python3 -m scripts.migrate
+     python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+     abra http://127.0.0.1:8000/painel/
+   (use o python do ambiente virtual do projeto)
+
+Usuario para a API em /docs (o painel de demonstracao nao precisa):
+     python3 -m scripts.create_user --nome "Seu Nome" --papel gerente --operacao c04f1a40-5050-4040-8050-000000000004
+
+CONTEUDO: operacao "quatro sabores" (4 sabores, 3 fornecedores, 6 cotacoes, 1.280 vendas,
+450 lotes, 420 perdas) e operacao antiga de demonstracao (1.600 vendas). Migrations 001-008.
