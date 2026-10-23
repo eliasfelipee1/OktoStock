@@ -1,18 +1,18 @@
 # Discovery: administrador da barraca de batata recheada
 
-Respostas às duas primeiras perguntas do discovery. Os IDs citados vêm dos dados do sábado (`PG-`, `RD-`, `KT-`) e do pacote da barraca (schema `grupo01`). Os números marcados com (*) foram contados lendo os arquivos e precisam ser conferidos com as consultas do final.
+Respostas às duas primeiras perguntas do discovery. Os IDs do OktoberVerse (`PG-`, `RD-`, `KT-`) vêm dos dados do sábado. Os números da barraca vêm da base de demonstração "okto" (`docs/DEMONSTRACAO_OKTO.md`), criada pelo time a pedido do dono e **simulada**: não representa vendas reais. O pacote `grupo01`, usado em uma versão anterior deste documento, foi descartado pelo time. Todos os números abaixo foram calculados no banco `okto` (consultas no final).
 
 ## 1. Quem vocês querem ajudar? Por que essa pessoa?
 
-**O administrador (gerente) da barraca de batata recheada**, que vende 5 sabores: calabresa, frango, bacon com cheddar, carne seca e vegetariano.
+**O administrador (gerente) da barraca de batata recheada**, que vende 4 sabores: Linguiça Blumenau, Strogonoff de frango, Bolonhesa e Vegetariana.
 
 **Por quê:** a barraca é uma mini-operação de food service (compra, recebimento, estocagem, pré-preparo, montagem e venda, sobras e perdas). O administrador é quem decide quanto pré-preparar e quando repor. Cada erro dele vira falta (fila e venda perdida) ou sobra (ingrediente perecível jogado fora).
 
-**O que mostra isso nos dados:**
-- A barraca registra produção e sobra por turno e sabor (`producao`, ids 1 a 5, 11 a 15, 21 a 25 e 31 a 35).
-- Em 4 dias a barraca registrou 4 perdas (`perdas`, ids 1 a 4), que somam R$ 266,10 (*): batata queimada, 13 kg (id 1); perda no preparo de bacon, 2,3 kg (id 2); sobra de frango no fim do turno, 3,1 kg (id 3); brócolis vencido, 1,2 kg (id 4).
+**O que mostra isso nos dados da barraca:**
+- A operação tem 30 insumos, 4 fichas técnicas, 14 turnos e 1.280 vendas (3.200 porções), de 07/10 a 20/10.
+- Foram registrados 420 movimentos de perda, que somam **R$ 322,66**. Os maiores: batata inglesa, R$ 83,52 (cerca de 26%); muçarela ralada, R$ 58,24 (cerca de 18%); linguiça Blumenau sem pele, R$ 41,47 (cerca de 13%).
 
-**Suposição a testar:** "só o administrador precisa ter essa visão". O próprio modelo da barraca tem outros papéis (caixa, estoquista), e eles também usam parte dessa informação.
+**Suposição a testar:** "só o administrador precisa ter essa visão". O modelo da barraca tem outros papéis (caixa, estoquista), que também usam parte dessa informação.
 
 ## 2. Qual acontecimento chamou a atenção? Que trabalho ele não consegue fazer bem?
 
@@ -23,48 +23,46 @@ Respostas às duas primeiras perguntas do discovery. Os IDs citados vêm dos dad
 
 **Trabalho que o administrador não consegue fazer bem nesse momento:** decidir quanto batata pré-assar e quanto recheio preparar para o turno, e quando repor, sem saber onde o público vai estar. O pico chega sem aviso, e a informação de que ele precisa está em lugares separados: saldo por insumo, o que já está pré-preparado e a estimativa de público.
 
-**Por que a demanda é difícil de prever, nos dados da barraca:**
+**Por que a demanda é difícil de prever, nos dados da barraca (vendas por dia):**
 
-| Dia | Turnos | Vendas no dia (*) | Visitantes do evento | Clima |
+| Dia | Vendas | | Dia | Vendas |
 |---|---|---|---|---|
-| 08/10 | 3 e 4 | 150 | 30.199 | chuva |
-| 15/10 | 17 e 18 | 150 | 32.066 | chuva |
-| 11/10 | 9 e 10 | 351 | 62.965 | sol |
+| 07/10 (qua) | 40 | | 14/10 (qua) | 40 |
+| 08/10 (qui) | 72 | | 15/10 (qui) | 64 |
+| 09/10 (sex) | 144 | | 16/10 (sex) | 96 |
+| 10/10 (sáb) | 176 | | 17/10 (sáb) | 128 |
+| 11/10 (dom) | 160 | | 18/10 (dom) | 120 |
+| 12/10 (seg) | 72 | | 19/10 (seg) | 64 |
+| 13/10 (ter) | 48 | | 20/10 (ter) | 56 |
 
-A mesma barraca vendeu de 150 a 351 unidades por dia no período (*), mais que o dobro. E os visitantes do evento não explicam sozinhos as vendas: em 12/10 (turnos 11 e 12) foram 177 vendas com 26.598 visitantes, e em 17/10 (turnos 21 e 22) foram 287 com 60.983.
+- A mesma barraca vendeu de 40 a 176 porções por dia, **4,4 vezes mais** no dia de pico do que no dia mais fraco.
+- Quinta a domingo concentram 960 das 1.280 vendas (75%), em linha com a premissa do dono de que esses são os dias fortes.
+- O fim de semana de 09 a 11/10 vendeu 480 porções, e o de 16 a 18/10 vendeu 344 (28% a menos; ou, visto ao contrário, o primeiro vendeu cerca de 40% a mais).
+- A segunda-feira 12/10 (feriado, 72 vendas) vendeu mais que a segunda seguinte, 19/10 (64 vendas), o que combina com a premissa do dono de que esse fim de semana merece reforço.
 
-**Produção contra vendas (os dias com produção registrada):**
-
-| Dia | Produzido (*) | Sobra registrada (*) | Vendas no dia (*) | Sem explicação |
-|---|---|---|---|---|
-| 17/10 (turno 21) | 326 | 5 | 287 | 34 |
-| 18/10 (turno 23) | 357 | 9 | 327 | 21 |
-| 19/10 (turno 25) | 240 | 7 | 203 | 30 |
-| 20/10 (turno 27) | 233 | 5 | 200 | 28 |
-
-"Sem explicação" é produzido, menos sobra, menos vendas. Em todos os quatro dias sobram de 21 a 34 unidades (cerca de 10%) que nem foram vendidas nem registradas como sobra ou perda. Esse é um ponto concreto do trabalho do administrador: ele não consegue fechar a conta entre o que produziu e o que aconteceu.
+Ou seja, existe um padrão por dia da semana, mas a amplitude entre os dias é grande, e o administrador precisa decidir o pré-assamento antes de ver o movimento do dia.
 
 ## O que ainda precisamos descobrir
 
-- A produção está registrada só no turno da manhã (turnos 21, 23, 25 e 27). Ela cobre o dia inteiro ou só a manhã? Se fosse só a manhã, as 326 unidades de 17/10 não bateriam com as 119 vendas da manhã (*). Perguntar a quem montou o pacote.
-- Os dados da barraca (07/10 a 20/10, de 26.598 a 62.965 visitantes) e os do OktoberVerse (82 mil visitantes) são cenários diferentes. A ligação entre o desfile das 16h e a barraca é conceitual, não está nos mesmos registros.
-- Os `visitantes_evento` são do evento inteiro, não dos compradores da barraca. O crescimento de 22% das consultas é um cenário de teste, não uma previsão validada.
-- O consumo histórico está agregado por dia, e os lotes são didáticos. O saldo consolidado é a referência.
+- **Pré-preparo:** as tabelas de pronta entrega (`lotes_prontos`, `movimentos_prontos`) existem, mas estão vazias na carga básica da base okto, então ainda não dá medir sobra de batata pré-assada. O próprio `DEMONSTRACAO_OKTO.md` diz que a transformação física em lotes pré-assados continua pendente.
+- **Perdas:** os 420 movimentos têm todos o mesmo motivo ("Demonstração simulada"). Não dá para dizer o que causou cada perda, nem distinguir queima, validade ou sobra. Motivo registrado não comprova causa raiz.
+- **Público:** a base não traz visitantes por dia. A premissa do dono é de 500 mil pessoas na festa inteira, sem inferência sobre os clientes da barraca. Não transformar público em vendas sem uma taxa de conversão observada.
+- **Ligação com o OktoberVerse:** a base da barraca (07/10 a 20/10) e os dados do sábado do OktoberVerse são cenários diferentes. A relação entre o desfile das 16h e a barraca é conceitual, não está nos mesmos registros.
+- **Dados simulados:** os volumes e o mix de sabores são hipóteses didáticas e não servem para medir preferência real por sabores.
 
-## Consultas para conferir os números (DBeaver, schema `grupo01`)
+## Consultas para conferir os números (DBeaver, banco `okto`, schema `public`)
 
 ```sql
 -- Vendas por dia
-SELECT v.instante::date AS dia, count(*) AS vendas
-FROM grupo01.vendas v GROUP BY 1 ORDER BY 1;
+SELECT criado_em::date AS dia, to_char(criado_em, 'Dy') AS dia_semana, count(*) AS vendas
+FROM vendas GROUP BY 1, 2 ORDER BY 1;
 
--- Produção, sobra e vendas dos dias com produção
-SELECT t.data, sum(p.quantidade_preparada) AS produzido, sum(p.sobra) AS sobra,
-       (SELECT count(*) FROM grupo01.vendas v WHERE v.instante::date = t.data) AS vendas
-FROM grupo01.producao p JOIN grupo01.turnos t ON t.id = p.turno_id
-GROUP BY t.data ORDER BY t.data;
+-- Total de perdas (movimentos) e custo
+SELECT count(*) AS movimentos, round(sum(-quantidade * custo_unitario), 2) AS custo_total
+FROM movimentacoes WHERE tipo = 'perda';
 
--- Custo das perdas
-SELECT sum(p.quantidade * i.custo_unitario) AS custo_total
-FROM grupo01.perdas p JOIN grupo01.insumos i ON i.id = p.insumo_id;
+-- Perdas por insumo
+SELECT i.nome, round(sum(-m.quantidade * m.custo_unitario), 2) AS custo
+FROM movimentacoes m JOIN lotes l ON l.id = m.lote_id JOIN insumos i ON i.id = l.insumo_id
+WHERE m.tipo = 'perda' GROUP BY 1 ORDER BY 2 DESC;
 ```
