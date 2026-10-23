@@ -11,6 +11,8 @@
   function table(headers,rows){const wrap=el('div',null,'table-scroll'),t=el('table'),head=el('thead'),tr=el('tr');headers.forEach(x=>tr.append(el('th',x)));head.append(tr);const body=el('tbody');for(const row of rows){const r=el('tr');row.forEach(x=>{const c=el('td');c.append(x instanceof Node?x:document.createTextNode(x??''));r.append(c);});body.append(r);}if(!rows.length){const r=el('tr'),c=el('td','Nenhum cadastro. Aguardando dados reais.');c.colSpan=headers.length;r.append(c);body.append(r);}t.append(head,body);wrap.append(t);return wrap;}
   function control(form,name,label,type='text',required=true){const l=el('label',label),i=el('input');i.name=name;i.type=type;i.required=required;if(type==='number'){i.min='0';i.step='0.01';}l.append(i);form.append(l);return i;}
   function select(form,name,label,options){const l=el('label',label),i=el('select');i.name=name;i.required=true;i.append(new Option('Selecione…',''));options.forEach(([v,t])=>i.append(new Option(t,v)));l.append(i);form.append(l);return i;}
+  const expanded=new Set();
+  function fold(title,content){const d=el('details',null,'content-fold');d.open=expanded.has(title);d.append(el('summary',title),content);d.addEventListener('toggle',()=>{if(d.open)expanded.add(title);else expanded.delete(title);});return d;}
   let data,ingredients=[],saving=false,selectedIngredient="";
   async function send(path,payload,method='POST'){
     const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));
@@ -40,7 +42,7 @@
     const item=section('Cadastrar insumo real','O mínimo será calculado pelas fichas: metas de 250/1.000 porções prontas por sabor, somando ingredientes compartilhados e descontando os prontos.');
     const g=el('form',null,'purchase-form');control(g,'nome','Nome do insumo');select(g,'unidade','Unidade-base',[['g','Gramas (g)'],['ml','Mililitros (ml)'],['un','Unidades (un)']]);
     action(g,'Cadastrar insumo',async v=>{await send('/demo/insumos',{nome:v.get('nome'),unidade:v.get('unidade'),estoque_minimo:'0'});const r=await fetch('/demo/dados');if(r.ok){ingredients=(await r.json()).estoque;ingredient.replaceChildren(new Option('Selecione…',''));ingredients.forEach(i=>ingredient.append(new Option(`${i.nome} (${i.unidade})`,i.id)));}});
-    item.append(g);root.append(supplier,quotes,item);
+    item.append(g);root.append(fold('Cadastrar fornecedor',supplier),fold('Cadastrar cotação',quotes),fold('Cadastrar insumo',item));
   }
   const results=el('div');
   function renderResults(){
@@ -57,7 +59,7 @@
       const q=a.melhor_oferta;return[a.nome,`${window.oktoQuantidade(a.saldo,a.unidade)} / ${window.oktoQuantidade(a.minimo,a.unidade)}`,`${window.oktoQuantidade(a.necessidade,a.unidade)}`,q?`${money(q.total_entregue)} · ${q.embalagens} embalagens`:'Sem proposta completa',q?`${q.fornecedor} · ${q.prazo_dias} dia(s)${q.simulado||q.fornecedor_simulado?' · SIMULADO':''}`:'Cadastrar cotação válida'];
     })));
     if(data.pendencias_fichas.length)compare.append(el('p','Fichas pendentes: '+data.pendencias_fichas.join(', ')+'. A cobertura só considera fichas validadas.','panel-body'));
-    compare.append(el('p','Antes de comprar, confirme prazo, capacidade e validade. O frete é comparado por insumo; uma compra conjunta pode ter outro custo.','panel-body'));results.append(compare);
+    compare.append(el('p','Antes de comprar, confirme prazo, capacidade e validade. O frete é comparado por insumo; uma compra conjunta pode ter outro custo.','panel-body'));results.append(fold('Lista de reposição',compare));
     const detail=section('Comparativo de fornecedores','Selecione o insumo. A quantidade a pedir acompanha a necessidade atual do estoque.');
     detail.id='supplier-comparison';
     const controls=el('div',null,'purchase-form');
@@ -80,12 +82,12 @@
       ])));
       offers.append(el('p','As embalagens são arredondadas para atender à quantidade necessária. Referências públicas dependem de confirmação na loja; o subtotal não inclui frete.','panel-body'));
     }
-    picker.addEventListener('change',showOffers);detail.append(controls,offers);results.append(detail);showOffers();if(restoreFocus)picker.focus({preventScroll:true});
+    picker.addEventListener('change',showOffers);detail.append(controls,offers);results.prepend(detail);showOffers();if(restoreFocus)picker.focus({preventScroll:true});
     const refs=data.cotacoes.filter(q=>q.referencia_publica&&q.ativo&&q.fornecedor_ativo);
     if(refs.length){const ref=section('Preços públicos de referência','Redes presentes em Blumenau. Preço da loja/CEP, frete, mínimo e validade ainda não confirmados; não é cotação local aprovada.');
-      ref.append(table(['Fornecedor','Produto/insumo','Embalagem','Preço publicado','Por kg/L','Consultado','Fonte'],refs.map(q=>{const a=el('a','Ver preço na fonte');a.href=q.fonte_url;a.target='_blank';a.rel='noopener noreferrer';return[q.fornecedor,q.insumo,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),money(Number(q.preco_embalagem)/Number(q.quantidade_embalagem)*(q.unidade==='un'?1:1000)),day(q.cotado_em),a];})));results.append(ref);}
+      ref.append(table(['Fornecedor','Produto/insumo','Embalagem','Preço publicado','Por kg/L','Consultado','Fonte'],refs.map(q=>{const a=el('a','Ver preço na fonte');a.href=q.fonte_url;a.target='_blank';a.rel='noopener noreferrer';return[q.fornecedor,q.insumo,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),money(Number(q.preco_embalagem)/Number(q.quantidade_embalagem)*(q.unidade==='un'?1:1000)),day(q.cotado_em),a];})));results.append(fold('Fontes e referências públicas',ref));}
     const history=section('Cotações registradas','Uma nova cotação para o mesmo fornecedor e insumo substitui a anterior; o histórico é preservado.');
-    history.append(table(['Insumo','Fornecedor','Embalagem','Preço','Mínimo','Frete','Prazo','Validade','Situação'],data.cotacoes.map(q=>[q.insumo,q.fornecedor,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),q.minimo_embalagens??'Pendente',money(q.frete),q.prazo_dias==null?'Pendente':q.prazo_dias+' dia(s)',day(q.valido_ate),!q.ativo?'Substituída/inativa':q.referencia_publica?'Referência · confirmar loja e condições':!q.valido_ate?'Validade pendente':q.valido_ate<today()?'Vencida':q.cotado_em>today()?'Futura':'Ativa'])));results.append(history);
+    history.append(table(['Insumo','Fornecedor','Embalagem','Preço','Mínimo','Frete','Prazo','Validade','Situação'],data.cotacoes.map(q=>[q.insumo,q.fornecedor,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),q.minimo_embalagens??'Pendente',money(q.frete),q.prazo_dias==null?'Pendente':q.prazo_dias+' dia(s)',day(q.valido_ate),!q.ativo?'Substituída/inativa':q.referencia_publica?'Referência · confirmar loja e condições':!q.valido_ate?'Validade pendente':q.valido_ate<today()?'Vencida':q.cotado_em>today()?'Futura':'Ativa'])));results.append(fold('Histórico de cotações',history));
     const selectEl=root.querySelector('[data-suppliers]');if(selectEl){const value=selectEl.value;selectEl.replaceChildren(new Option('Selecione…',''));data.fornecedores.filter(f=>f.ativo).forEach(f=>selectEl.append(new Option(f.nome,f.id)));selectEl.value=value;}
   }
   async function refresh(){const r=await fetch('/demo/reposicao',{cache:'no-store'});if(!r.ok)throw new Error('Não foi possível consultar fornecedores.');data=await r.json();renderResults();}
@@ -93,7 +95,7 @@
     const [r,d]=await Promise.all([fetch('/demo/reposicao'),fetch('/demo/dados')]);if(!r.ok||!d.ok)throw new Error('Não foi possível consultar a operação.');data=await r.json();const dashboard=await d.json();ingredients=dashboard.estoque;
     document.querySelector('.workspace strong').textContent=dashboard.operacao.nome;
     document.querySelector('.demo-badge').textContent=dashboard.contexto.parametros.natureza_dados==='simulados'?'DADOS SIMULADOS':'CADASTROS REAIS · OPERAÇÃO LOCAL';
-    root.replaceChildren();renderForms();root.append(results);renderResults();
+    root.replaceChildren(results);renderForms();renderResults();
     window.addEventListener('okto:reposicao',e=>{data=e.detail;renderResults();});
   }catch(e){status.textContent=e.message;}}
   start();

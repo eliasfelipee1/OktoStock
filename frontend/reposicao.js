@@ -12,10 +12,10 @@
   const notice=el('section',null,'replenishment-notice'); notice.setAttribute('aria-label','Alertas automáticos do Otto');
   const title=el('strong','Otto · reposição automática');
   const state=el('p','Conectando ao monitor de estoque…'); state.setAttribute('role','status');
-  const details=el('details'); const summary=el('summary','Ver mensagens'); const list=el('div');details.append(summary,list);
+  const details=el('details'); const summary=el('summary'); const list=el('div');details.append(summary,list);
   const link=el('a','Consultar fornecedores e cotações →');link.href='fornecedores.html';
-  notice.append(title,state,details,link);
-  const anchor=document.querySelector('.heading'); if(anchor)anchor.after(notice);
+  summary.append(title,state);details.append(list,link);notice.append(details);
+  const anchor=document.querySelector('.heading'); if(anchor&&!location.pathname.endsWith('producao.html'))anchor.after(notice);
   let loading=false, pending=false;
   let seen=new Set();
   try {seen=new Set(JSON.parse(sessionStorage.getItem('okto-alertas-vistos')||'[]'));}catch{}
@@ -28,10 +28,8 @@
       const ready=data.prontos;const controlled=data.politica?.controle_prontos;
       const missing=controlled?ready.contagens_pendentes:data.pendencias_fichas;
       const alerts=controlled?ready.alertas:data.alertas;
-      state.textContent=controlled?`${alerts.length} sabor(es) abaixo de 30%. Meta hoje: ${data.meta_por_sabor} por sabor; alerta abaixo de ${data.meta_por_sabor*.3}.`:`${alerts.length} insumo(s) com necessidade de reposição.`;
-      if(controlled&&missing.length===ready.sabores.length&&missing.length)state.textContent=`Aguardando contagem física dos ${missing.length} sabores. Meta hoje: ${data.meta_por_sabor} por sabor; alerta abaixo de ${data.meta_por_sabor*.3}.`;
-      state.textContent+=` Atualizado às ${new Date(data.gerado_em).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'})}.`;
-      if(missing.length){state.textContent+=` ${missing.length} ${controlled?'contagem(ns) física(s)':'ficha(s)'} pendente(s).`;list.append(el('p',`Aguardando ${controlled?'contagem de porções realmente prontas':'fichas'}: ${missing.join(', ')}.`));}
+      state.textContent=alerts.length?`${alerts.length} alerta(s) de reposição`:missing.length?`${missing.length} contagem(ns) pendente(s)`:'Estoque acompanhado';
+      if(missing.length)list.append(el('p',`Aguardando ${controlled?'contagem':'fichas'}: ${missing.join(', ')}.`));
       for(const a of alerts){
         let text;
         if(controlled) text=`${a.nome}: ${fmt(a.saldo)} porções prontas (${fmt(a.percentual_disponivel)}% da meta de ${a.meta}). Abaixo de ${fmt(a.limite_alerta)}. Faltam ${fmt(a.repor_ate_meta)} para completar a meta. Confira ingredientes e capacidade antes de produzir.`;
@@ -41,7 +39,7 @@
       }
       if(controlled) list.append(el('p',`Planejamento de compras: ${data.alertas.length} insumo(s) sem saldo suficiente para completar as metas. Consulte preços e condições em Fornecedores.`));
       if(!alerts.length&&!missing.length)list.append(el('p','Nenhum sabor está abaixo do limite de alerta de 30%.'));
-      summary.textContent=`Mensagens do Otto (${alerts.length+missing.length})`;
+      summary.setAttribute('aria-label',`Otto: ${state.textContent}. Ver detalhes`);
       try{sessionStorage.setItem('okto-alertas-vistos',JSON.stringify([...seen].slice(-500)));}catch{}
       window.dispatchEvent(new CustomEvent('okto:reposicao',{detail:data}));
     }catch{state.textContent='Monitor indisponível: os dados exibidos podem estar desatualizados. Reconectando automaticamente…';}
