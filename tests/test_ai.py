@@ -16,6 +16,7 @@ from app.main import app
 @pytest.fixture
 def provider(monkeypatch):
     monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-placeholder-never-real')
+    monkeypatch.setenv('OTTO_WEB_SEARCH', '0')
     client = MagicMock()
     monkeypatch.setattr(ai.httpx, 'Client', MagicMock(return_value=client))
     client.__enter__.return_value = client
@@ -169,3 +170,65 @@ def test_otto_empty_and_new_ingredient_have_no_invented_forecast(setup):
     assert item['compra_sugerida'] is None
     assert item['lotes_cadastrados'] == 0
     assert c.get('/ia/status').json()['nome'] == 'Otto'
+
+
+def test_web_search_citations_and_safe_output(provider, monkeypatch):
+    monkeypatch.setenv('OTTO_WEB_SEARCH', '1')
+    provider.post.return_value = httpx.Response(200, json={'stop_reason':'end_turn', 'content':[
+        {'type':'server_tool_use','name':'web_search','input':{'query':'batata Blumenau'}},
+        {'type':'web_search_tool_result','content':[{'encrypted_content':'PRIVATE_ENCRYPTED'}]},
+        {'type':'text','text':'Preço público, sujeito à confirmação.', 'citations':[
+            {'type':'web_search_result_location','url':'https://example.com/preco','title':'Fonte','encrypted_index':'PRIVATE_INDEX'},
+            {'type':'web_search_result_location','url':'javascript:alert(1)','title':'Ruim'}]},
+        {'type':'text','text':'Outra afirmação.', 'citations':[
+            {'type':'web_search_result_location','url':'https://example.com/preco','title':'Fonte'}]}]})
+    result=ai.answer('Pesquise preços',context())
+    assert provider.post.call_args.kwargs['json']['tools'][0]['max_uses']==3
+    assert result['pesquisa_web_utilizada'] is True
+    assert result['fontes_web']==[{'id':1,'url':'https://example.com/preco','titulo':'Fonte'}]
+    assert result['blocos'][0]['fontes']==[1]
+    assert result['blocos'][1]['fontes']==[1]
+    assert 'PRIVATE_' not in json.dumps(result)
+
+
+def test_web_error_in_success_response_is_visible(provider, monkeypatch):
+    monkeypatch.setenv('OTTO_WEB_SEARCH','1')
+    provider.post.return_value=httpx.Response(200,json={'stop_reason':'end_turn','content':[
+        {'type':'web_search_tool_result','content':{'type':'web_search_tool_result_error','error_code':'unavailable'}},
+        {'type':'text','text':'Não consegui confirmar o preço.'}]})
+    result=ai.answer('Pesquise preço',context())
+    assert result['avisos'] and result['fontes_web']==[]
+    assert result['pesquisa_web_utilizada'] is True
+
+
+def test_web_pause_continues_with_unchanged_content(provider, monkeypatch):
+    monkeypatch.setenv('OTTO_WEB_SEARCH','1')
+    blocks=[{'type':'web_search_tool_result','content':[{'encrypted_content':'encrypted'}]}]
+    provider.post.side_effect=[httpx.Response(200,json={'stop_reason':'pause_turn','content':blocks}),
+        httpx.Response(200,json={'stop_reason':'end_turn','content':[{'type':'text','text':'Concluído.'}]})]
+    assert ai.answer('Pesquise',context())['resposta']=='Concluído.'
+    assert provider.post.call_count==2
+    assert provider.post.call_args.kwargs['json']['messages'][-1]['content']==blocks
+
+
+def test_web_pause_is_bounded(provider, monkeypatch):
+    monkeypatch.setenv('OTTO_WEB_SEARCH','1')
+    provider.post.return_value=httpx.Response(200,json={'stop_reason':'pause_turn','content':[]})
+    with pytest.raises(HTTPException) as exc:ai.answer('Pesquise',context())
+    assert exc.value.detail['codigo']=='IA_RESPOSTA_INCOMPLETA'
+    assert provider.post.call_count==2
+
+
+def test_web_bad_configuration_is_sanitized(provider, monkeypatch):
+    monkeypatch.setenv('OTTO_WEB_SEARCH','1')
+    provider.post.return_value=httpx.Response(400,text='private details')
+    with pytest.raises(HTTPException) as exc:ai.answer('Pesquise',context())
+    assert exc.value.detail['codigo']=='IA_PESQUISA_CONFIGURACAO'
+
+
+def test_web_enabled_does_not_claim_search_when_not_used(provider, monkeypatch):
+    monkeypatch.setenv('OTTO_WEB_SEARCH','1')
+    provider.post.return_value=httpx.Response(200,json={'stop_reason':'end_turn','content':[{'type':'text','text':'Saldo atual.'}]})
+    result=ai.answer('Qual saldo?',context())
+    assert result['pesquisa_web_utilizada'] is False
+    assert result['fontes_web']==[]

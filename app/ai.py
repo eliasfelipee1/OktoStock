@@ -13,7 +13,9 @@ from app.db import connect
 from app.purchasing import snapshot as purchasing_snapshot
 from app.operation_context import read as read_operation_context
 from app.losses import report as loss_report
+from app.price_proposals import split_candidates
 from app.schemas import Model
+from app.web_research import extract as extract_research
 
 
 class Question(Model):
@@ -32,7 +34,7 @@ def error(code, status):
 def configuration():
     return {'nome': 'Otto', 'configurado': bool(os.getenv('ANTHROPIC_API_KEY', '').strip()),
             'provedor': 'anthropic', 'modelo': os.getenv('AI_MODEL', 'claude-sonnet-4-6'),
-            'modo': 'somente_leitura'}
+            'modo': 'somente_leitura', 'pesquisa_web_habilitada': os.getenv('OTTO_WEB_SEARCH', '1') == '1'}
 
 
 def build_context(operation_id, history_days=14, horizon=3):
@@ -94,6 +96,11 @@ def build_context(operation_id, history_days=14, horizon=3):
             'alertas': [{k: v for k, v in a.items() if k not in ('comparativo', 'operacao_id')}
                         for a in purchasing_data['alertas']],
         }
+        price_catalog = {
+            'fornecedores': [{'id':f['id'],'nome':f['nome']} for f in purchasing_data['fornecedores'] if f['ativo']][:100],
+            'insumos': [{'id':i['id'],'nome':i['nome'],'unidade':i['unidade']} for i in rows[:100]],
+            'cotacoes': [{k:q.get(k) for k in ('id','fornecedor_id','insumo_id','quantidade_embalagem','preco_embalagem','frete','minimo_embalagens','prazo_dias','cotado_em','valido_ate','referencia_publica','local_confirmado')} for q in purchasing_data['cotacoes'] if q['ativo']]
+        }
         loss_data.pop('perdas_prontas', None)
         loss_data.pop('registros')  # Nao enviar nomes/IDs de responsaveis nem movimentos individuais.
     truncated = len(rows) > 100
@@ -109,7 +116,7 @@ def build_context(operation_id, history_days=14, horizon=3):
             'abaixo_minimo': row['saldo_utilizavel'] < row['estoque_minimo']})
     summary['margem_ingredientes'] = summary['receita'] - summary['custo_ingredientes_consumidos']
     summary['custo_perdas_independentes'] = losses
-    return {'agente': 'Otto', 'reposicao': purchasing_context, 'operacao': operation_context, 'cadastros': counts,
+    return {'catalogo_precos': price_catalog, 'agente': 'Otto', 'reposicao': purchasing_context, 'operacao': operation_context, 'cadastros': counts,
             'estado_dados': 'sem_cadastros' if not any(counts.values()) else 'com_cadastros',
             'sem_vendas_no_periodo': summary['vendas_confirmadas'] + summary['vendas_estornadas'] == 0,
             'produtos': products[:100], 'fichas': recipes, 'produtos_truncados': len(products) > 100,
@@ -137,35 +144,53 @@ def answer(question, context):
         error('CONTEXTO_IA_MUITO_GRANDE', 422)
     payload = {'model': configuration()['modelo'], 'system': SYSTEM_PROMPT,
                'messages': [{'role': 'user', 'content': content}], 'max_tokens': 1200}
+    web_enabled = configuration()['pesquisa_web_habilitada']
+    if web_enabled:
+        payload['tools'] = [{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': 3}]
+        payload['max_tokens'] = 2400
+    all_blocks = []
     try:
-        # URL fixa: a chave nunca e enviada a um host indicado pelo cliente.
-        with httpx.Client(timeout=httpx.Timeout(30.0, connect=5.0), follow_redirects=False) as client:
-            response = client.post('https://api.anthropic.com/v1/messages',
-                headers={'x-api-key': key, 'anthropic-version': '2023-06-01'}, json=payload)
+        # Endpoint fixo. A ferramenta é executada pelo provedor, sem HTTP arbitrário no servidor local.
+        with httpx.Client(timeout=httpx.Timeout(60.0 if web_enabled else 30.0, connect=5.0), follow_redirects=False) as client:
+            for attempt in range(2):
+                response = client.post('https://api.anthropic.com/v1/messages',
+                    headers={'x-api-key': key, 'anthropic-version': '2023-06-01'}, json=payload)
+                if response.status_code in (401, 403):
+                    error('IA_CREDENCIAL_RECUSADA', 503)
+                if response.status_code == 429:
+                    error('IA_LIMITE_DO_PROVEDOR', 503)
+                if response.status_code == 400 and web_enabled:
+                    error('IA_PESQUISA_CONFIGURACAO', 503)
+                if not response.is_success:
+                    error('IA_INDISPONIVEL', 502)
+                data = response.json()
+                if not isinstance(data, dict) or not isinstance(data.get('content', []), list):
+                    error('IA_RESPOSTA_INVALIDA', 502)
+                blocks = data.get('content', [])
+                all_blocks.extend(blocks)
+                if data.get('stop_reason') == 'pause_turn' and web_enabled and attempt == 0:
+                    # Preserva integralmente resultados cifrados exigidos pela API na continuação.
+                    payload['messages'].append({'role': 'assistant', 'content': blocks})
+                    continue
+                if data.get('stop_reason') != 'end_turn':
+                    error('IA_RESPOSTA_INCOMPLETA', 502)
+                break
     except httpx.TimeoutException:
         error('IA_TEMPO_ESGOTADO', 504)
     except httpx.RequestError:
         error('IA_INDISPONIVEL', 502)
-    if response.status_code in (401, 403):
-        error('IA_CREDENCIAL_RECUSADA', 503)
-    if response.status_code == 429:
-        error('IA_LIMITE_DO_PROVEDOR', 503)
-    if not response.is_success:
-        error('IA_INDISPONIVEL', 502)
-    try:
-        data = response.json()
-        if data.get('stop_reason') != 'end_turn':
-            error('IA_RESPOSTA_INCOMPLETA', 502)
-        text = '\n'.join(part['text'] for part in data.get('content', [])
-            if part.get('type') == 'text' and isinstance(part.get('text'), str)).strip()
     except (ValueError, TypeError, KeyError, AttributeError):
         error('IA_RESPOSTA_INVALIDA', 502)
+    research = extract_research(all_blocks)
+    candidates = split_candidates(research)
+    text = '\n'.join(segment['texto'] for segment in research['blocos']).strip()
     if not text:
         error('IA_RESPOSTA_VAZIA', 502)
     report = context.get('operacao', {}).get('relatorio_semanal', {})
     if report.get('pergunta') and report['pergunta'] not in text:
         text += '\n\n' + report['pergunta']
-    return {'agente': 'Otto', 'relatorio_semanal': report, 'resposta': text, 'modelo': configuration()['modelo'], 'modo': 'somente_leitura',
+        research['blocos'].append({'texto': '\n\n' + report['pergunta'], 'fontes': []})
+    return {**research, '_candidatos_precos': candidates, 'pesquisa_web_habilitada': web_enabled, 'agente': 'Otto', 'relatorio_semanal': report, 'resposta': text, 'modelo': configuration()['modelo'], 'modo': 'somente_leitura',
             'periodo': context['periodo'], 'gerado_em': context['gerado_em'],
             'fontes': ['vendas agregadas', 'lotes por insumo', 'movimentacoes agregadas'],
             'insumos_truncados': context['insumos_truncados']}

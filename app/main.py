@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.types.json import Jsonb
 
-from app import ai, losses, planning, purchasing, ready_stock
+from app import ai, losses, planning, purchasing, ready_stock, price_proposals
 from app.monitor import lifespan
 from app.recipes import Recipe
 from app.db import connect
@@ -403,7 +403,7 @@ def ai_question(body: ai.Question, u=Depends(user)):
     if not ai.configuration()['configurado']:
         fail('IA_NAO_CONFIGURADA', 503)
     context = ai.build_context(u['operacao_id'], body.dias_historico, body.dias_cobertura)
-    return ai.answer(body.pergunta, context)
+    return price_proposals.attach(ai.answer(body.pergunta, context), u['operacao_id'], context)
 
 
 def panel_filters(inicio: Optional[date] = None, fim: Optional[date] = None,
@@ -525,7 +525,7 @@ def local_demo_question(body: ai.Question, operation_id: UUID = Depends(local_de
     if not ai.configuration()['configurado']:
         fail('IA_NAO_CONFIGURADA', 503)
     context = ai.build_context(operation_id, body.dias_historico, body.dias_cobertura)
-    return ai.answer(body.pergunta, context)
+    return price_proposals.attach(ai.answer(body.pergunta, context), operation_id, context)
 
 
 app.mount('/painel', StaticFiles(directory=Path(__file__).resolve().parents[1] / 'frontend', html=True), name='painel')
@@ -708,3 +708,29 @@ def ready_discard(body:ready_stock.Waste,u=Depends(user)):
 @app.post('/demo/prontos/perdas',status_code=201,include_in_schema=False)
 def demo_ready_discard(body:ready_stock.Waste,u=Depends(demo_manager)):
     return ready_waste(body,u)
+
+
+def apply_price_proposal(proposal_id, u, cancel=False):
+    roles(u, 'gerente')
+    with connect() as db:
+        return price_proposals.apply(db, u, proposal_id, cancel=cancel)
+
+
+@app.post('/ia/propostas-precos/{proposal_id}/confirmar')
+def confirm_price_proposal(proposal_id: UUID, body: price_proposals.Confirmation, u=Depends(user)):
+    return apply_price_proposal(proposal_id,u)
+
+
+@app.post('/demo/ia/propostas-precos/{proposal_id}/confirmar', include_in_schema=False)
+def demo_confirm_price_proposal(proposal_id: UUID, body: price_proposals.Confirmation, u=Depends(demo_manager)):
+    return apply_price_proposal(proposal_id,u)
+
+
+@app.post('/ia/propostas-precos/{proposal_id}/cancelar')
+def cancel_price_proposal(proposal_id: UUID, u=Depends(user)):
+    return apply_price_proposal(proposal_id,u,cancel=True)
+
+
+@app.post('/demo/ia/propostas-precos/{proposal_id}/cancelar', include_in_schema=False)
+def demo_cancel_price_proposal(proposal_id: UUID, u=Depends(demo_manager)):
+    return apply_price_proposal(proposal_id,u,cancel=True)

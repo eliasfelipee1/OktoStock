@@ -214,6 +214,7 @@ function render(data) {
 
   grid.append(daily, flavors, payments, hours, stock, losses, recent);
   dash.replaceChildren(kpis(data), grid);
+  renderQuoteReferences();
 }
 
 // Tempo real: o servidor avisa quando a operação muda; a página busca os dados de novo.
@@ -262,3 +263,19 @@ load();
 window.addEventListener('okto:estoque', () => {setLive('online','Atualização automática'); load();});
 // Rede de segurança: mesmo sem avisos, recarrega a cada 2 minutos.
 setInterval(() => { if (!lastUpdate || Date.now() - lastUpdate > 110000) load(); }, 120000);
+
+
+let quoteSnapshot = null;
+function renderQuoteReferences() {
+  document.getElementById('dashboard-price-references')?.remove();
+  if (!quoteSnapshot) return;
+  const section=card('Preços de fornecedores','Referências atuais cadastradas. Atualizam após confirmação no Otto. Não alteram custos históricos.',true);
+  section.id='dashboard-price-references';
+  const rows=quoteSnapshot.cotacoes.filter(q=>q.ativo&&q.fornecedor_ativo);
+  const table=dataTable(['Insumo','Fornecedor','Embalagem','Preço','Consultado','Condição'],rows.map(q=>[
+    q.insumo,q.fornecedor,window.oktoQuantidade(q.quantidade_embalagem,q.unidade),money(q.preco_embalagem),day(q.cotado_em),q.referencia_publica?'Referência pública · confirmar loja':q.valido_ate&&q.valido_ate>=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})?'Cotação cadastrada':'Validade pendente/vencida'
+  ]));
+  table.open=true;const scroll=node('div',null,'table-scroll');scroll.append(table);section.append(rows.length?scroll:empty('Ainda não há preços cadastrados.'));
+  dash.append(section);
+}
+window.addEventListener('okto:reposicao',event=>{quoteSnapshot=event.detail;renderQuoteReferences();});

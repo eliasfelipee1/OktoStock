@@ -73,7 +73,7 @@
       needed.value=a?window.oktoQuantidade(a.necessidade,a.unidade):'';
       if(!a)return;
       if(!a.comparativo?.length){offers.append(el('p',Number(a.necessidade)<=0?'Sem necessidade de reposição neste momento.':'Ainda não há preços cadastrados para este insumo.','panel-body'));return;}
-      offers.append(table(['Fornecedor','Embalagem','Preço por embalagem','Preço por kg/L ou un','Embalagens a pedir','Quantidade entregue','Subtotal sem frete','Frete','Total entregue','Condição'],a.comparativo.map(q=>[
+      offers.append(table(['Fornecedor','Embalagem','Preço por embalagem','Preço por kg/L ou un','Embalagens a pedir','Quantidade entregue','Subtotal sem frete','Frete','Total entregue','Condição'],a.comparativo.filter(q=>q.ativo&&q.fornecedor_ativo).map(q=>[
         q.fornecedor,window.oktoQuantidade(q.quantidade_embalagem,a.unidade),money(q.preco_embalagem),
         money(Number(q.preco_por_unidade)*(a.unidade==='un'?1:1000)),num(q.embalagens),window.oktoQuantidade(q.quantidade_total,a.unidade),
         money(Number(q.embalagens)*Number(q.preco_embalagem)),money(q.frete),money(q.total_entregue),q.pendencias.join('; ')||'Elegível até '+day(q.valido_ate)
@@ -81,11 +81,11 @@
       offers.append(el('p','As embalagens são arredondadas para atender à quantidade necessária. Referências públicas dependem de confirmação na loja; o subtotal não inclui frete.','panel-body'));
     }
     picker.addEventListener('change',showOffers);detail.append(controls,offers);results.append(detail);showOffers();if(restoreFocus)picker.focus({preventScroll:true});
-    const refs=data.cotacoes.filter(q=>q.referencia_publica);
+    const refs=data.cotacoes.filter(q=>q.referencia_publica&&q.ativo&&q.fornecedor_ativo);
     if(refs.length){const ref=section('Preços públicos de referência','Redes presentes em Blumenau. Preço da loja/CEP, frete, mínimo e validade ainda não confirmados; não é cotação local aprovada.');
       ref.append(table(['Fornecedor','Produto/insumo','Embalagem','Preço publicado','Por kg/L','Consultado','Fonte'],refs.map(q=>{const a=el('a','Ver preço na fonte');a.href=q.fonte_url;a.target='_blank';a.rel='noopener noreferrer';return[q.fornecedor,q.insumo,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),money(Number(q.preco_embalagem)/Number(q.quantidade_embalagem)*(q.unidade==='un'?1:1000)),day(q.cotado_em),a];})));results.append(ref);}
     const history=section('Cotações registradas','Uma nova cotação para o mesmo fornecedor e insumo substitui a anterior; o histórico é preservado.');
-    history.append(table(['Insumo','Fornecedor','Embalagem','Preço','Mínimo','Frete','Prazo','Validade','Situação'],data.cotacoes.map(q=>[q.insumo,q.fornecedor,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),q.minimo_embalagens??'Pendente',money(q.frete),q.prazo_dias==null?'Pendente':q.prazo_dias+' dia(s)',day(q.valido_ate),q.referencia_publica?'Referência · confirmar loja e condições':!q.ativo?'Substituída/inativa':!q.valido_ate?'Validade pendente':q.valido_ate<today()?'Vencida':q.cotado_em>today()?'Futura':'Ativa'])));results.append(history);
+    history.append(table(['Insumo','Fornecedor','Embalagem','Preço','Mínimo','Frete','Prazo','Validade','Situação'],data.cotacoes.map(q=>[q.insumo,q.fornecedor,`${window.oktoQuantidade(q.quantidade_embalagem,q.unidade)}`,money(q.preco_embalagem),q.minimo_embalagens??'Pendente',money(q.frete),q.prazo_dias==null?'Pendente':q.prazo_dias+' dia(s)',day(q.valido_ate),!q.ativo?'Substituída/inativa':q.referencia_publica?'Referência · confirmar loja e condições':!q.valido_ate?'Validade pendente':q.valido_ate<today()?'Vencida':q.cotado_em>today()?'Futura':'Ativa'])));results.append(history);
     const selectEl=root.querySelector('[data-suppliers]');if(selectEl){const value=selectEl.value;selectEl.replaceChildren(new Option('Selecione…',''));data.fornecedores.filter(f=>f.ativo).forEach(f=>selectEl.append(new Option(f.nome,f.id)));selectEl.value=value;}
   }
   async function refresh(){const r=await fetch('/demo/reposicao',{cache:'no-store'});if(!r.ok)throw new Error('Não foi possível consultar fornecedores.');data=await r.json();renderResults();}
