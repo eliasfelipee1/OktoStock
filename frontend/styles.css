@@ -1624,3 +1624,44 @@ tbody tr:last-child td {
 .otto-price-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
 #dashboard-price-references { min-width: 0; margin-top: 18px; }
+
+/* Visão enxuta: ações principais à vista, detalhes sob demanda. */
+#connection-status.notice {padding:0;margin:0 0 16px;border:0;background:none;font-size:13px;color:var(--muted);}
+.replenishment-notice {padding:8px 16px;margin-bottom:18px;border-left-width:3px;}
+.replenishment-notice summary {display:flex;align-items:center;gap:14px;list-style:none;}
+.replenishment-notice summary::after {content:'Ver detalhes';margin-left:auto;font-size:12px;font-weight:500;}
+.replenishment-notice details[open] summary::after {content:'Recolher';}
+.replenishment-notice summary p {margin:0;font-size:13px;font-weight:400;}
+.replenishment-notice summary strong {font-size:14px;}
+.content-fold {margin:12px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface);}
+.content-fold>summary {padding:14px 18px;font-weight:600;cursor:pointer;}
+.content-fold>.panel {margin:0;border:0;box-shadow:none;}
+.content-fold .content-fold {border:0;}
+.operation-shortcuts {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
+.operation-shortcut {display:flex;flex-direction:column;gap:10px;padding:24px 20px;border-top:2px solid var(--green);background:var(--surface);border-radius:0 0 12px 12px;text-decoration:none;}
+.operation-shortcut span {font-size:13px;color:var(--muted);}
+.ready-overview h2 {margin-bottom:6px;font-size:20px;}
+.ready-card {display:flex;flex-direction:column;padding:18px;}
+.ready-card h3 {min-height:36px;margin-bottom:12px;}
+.ready-card .button {margin-top:auto;align-self:flex-start;font-size:12px;}
+.ready-count {font-size:36px;}
+.empty-state {padding:22px;margin:18px 0;background:var(--paper);border:1px dashed var(--line);border-radius:12px;}
+.empty-state p {color:var(--muted);margin:8px 0 14px;}
+.text-link {display:inline-block;margin-bottom:18px;font-size:14px;font-weight:600;}
+.live-recipes {grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
+.live-recipes .recipe-photo img {height:170px;}
+.live-recipes .panel-head {padding:16px;}
+.live-recipes .panel-head h2 {font-size:18px;}
+.live-recipes .panel-head p {font-size:12px;}
+.live-recipes .content-fold {border:0;border-top:1px solid var(--line);border-radius:0;margin:0;}
+.live-recipes .panel-body {padding:16px;font-size:13px;}
+.live-recipes .recipe-download {font-size:12px;margin:12px;}
+.live-recipes .recipe-photo figcaption {font-size:10px;padding:6px 12px;}
+.purchase-form label[hidden] {display:none;}
+@media(max-width:1150px){.live-recipes,.operation-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px){.live-recipes,.operation-shortcuts{grid-template-columns:1fr;}.replenishment-notice summary{gap:8px;flex-wrap:wrap;}.live-recipes .recipe-photo img{height:200px;}}
+
+.ready-editor .purchase-form {grid-template-columns:repeat(3,minmax(0,1fr));}
+.live-recipes > .panel:has(.content-fold[open]) {grid-column:1/-1;}
+.live-recipes > .panel:has(.content-fold[open]) .recipe-photo img {height:240px;object-fit:contain;}
+@media(max-width:700px){.ready-editor .purchase-form{grid-template-columns:1fr;}}

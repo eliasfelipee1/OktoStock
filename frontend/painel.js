@@ -32,6 +32,7 @@ function metrics(items) {
     item.append(node('div',label,'metric-top'),node('div',value,'metric-value'),node('p',foot,'metric-foot'));wrap.append(item);});
   return wrap;
 }
+function fold(title,content){const d=node('details',null,'content-fold');d.append(node('summary',title),content);return d;}
 function stockTable(rows) {
   return table(['Ingrediente','Saldo utilizável','Vencido','Insumos para completar a meta','Validade mais próxima'],rows.map(i => [i.nome,window.oktoQuantidade(i.saldo,i.unidade),window.oktoQuantidade(i.vencido,i.unidade),i.minimo_50_por_sabor==null?'Aguardando ficha':window.oktoQuantidade(i.minimo_50_por_sabor,i.unidade),date(i.validade)]));
 }
@@ -46,18 +47,18 @@ function daily(data) {
 function render(data) {
   root.replaceChildren();
   const r=data.resumo, c=data.contexto;
-  if(['index','estoque','producao'].includes(page)&&data.prontos?.sabores.length&&window.oktoReadyPanel)root.append(window.oktoReadyPanel(data.prontos));
-  if (page==='index' || page==='vendas') {
-    root.append(metrics([['Receita de vendas',money(r.receita),'Vendas confirmadas'],['Custo de ingredientes',money(r.custo),'Custo histórico, não custo total'],['Margem sobre ingredientes',money(Number(r.receita)-Number(r.custo)),'Não representa lucro líquido'],['Porções vendidas',number(r.porcoes),number(r.vendas)+' vendas cadastradas']]));
-    root.append(daily(data),ranking(data));
-    if(page==='index') {
-      const s=panel('Estoque em foco','Saldo atual por ingrediente');s.append(stockTable(data.estoque));root.append(s);
-    } else {
-      const s=panel('Histórico de vendas',`${number(r.vendas)} vendas encontradas • página ${data.pagina} de ${data.paginas} • 50 por página`);
-      s.append(table(['Data','Hora','Itens','Pagamento','Valor','Status'],data.vendas.map(v=>[date(v.criado_em),hour(v.criado_em),v.itens,(v.pagamento||'').split(', ').map(f=>PAYMENTS[f]||f).join(', '),money(v.total),v.status])));
-      const nav=node('div',null,'panel-body');
-      [['Anterior',data.pagina-1],['Próxima',data.pagina+1]].forEach(([title,p])=>{const b=node('button',title,'button'); b.disabled=p<1||p>data.paginas;b.addEventListener('click',()=>load(p));nav.append(b);});s.append(nav);root.append(s);
-    }
+  if(['index','producao'].includes(page)&&data.prontos?.sabores.length&&window.oktoReadyPanel)root.append(window.oktoReadyPanel(data.prontos));
+  if(page==='index') {
+    const shortcuts=node('div',null,'operation-shortcuts');
+    [['producao.html','Produção','Prontos e novos lotes'],['fornecedores.html','Compras','Reposição e fornecedores'],['perdas.html','Perdas','Descarte e custo'],['dashboard.html','Resultados','Indicadores da operação']].forEach(([href,title,description])=>{const link=node('a',null,'operation-shortcut');link.href=href;link.append(node('strong',title),node('span',description));shortcuts.append(link);});
+    root.append(shortcuts);
+  }
+  if(page==='vendas') {
+    root.append(metrics([['Receita',money(r.receita),'Vendas confirmadas'],['Porções vendidas',number(r.porcoes),number(r.vendas)+' vendas']]));
+    const sales=panel('Vendas registradas',`Página ${data.pagina} de ${data.paginas}`);
+    sales.append(table(['Data','Hora','Itens','Pagamento','Valor','Status'],data.vendas.map(v=>[date(v.criado_em),hour(v.criado_em),v.itens,(v.pagamento||'').split(', ').map(f=>PAYMENTS[f]||f).join(', '),money(v.total),v.status])));
+    const nav=node('div',null,'panel-body');[['Anterior',data.pagina-1],['Próxima',data.pagina+1]].forEach(([title,p])=>{const b=node('button',title,'button');b.disabled=p<1||p>data.paginas;b.onclick=()=>load(p);nav.append(b);});sales.append(nav);root.append(sales);
+    root.append(fold('Vendas por dia',daily(data)),fold('Desempenho por sabor',ranking(data)));
   }
   if(page==='estoque') {
     if(window.oktoReceiptEditor)root.append(window.oktoReceiptEditor(data.estoque));
@@ -86,32 +87,33 @@ function render(data) {
       if(p.ficha_detalhes?.preparo) body.append(node('p','Preparo: '+p.ficha_detalhes.preparo));
       if(p.ficha_detalhes?.observacoes) body.append(node('p',p.ficha_detalhes.observacoes));
       if(!p.ingredientes.length)body.append(node('p','Quantidades, rendimento e preparo aguardam informação do responsável. Nenhum ingrediente foi presumido.'));
-      s.append(body,table(['Ingrediente','Quantidade por porção'],p.ingredientes.map(i=>[i.nome,window.oktoQuantidade(i.quantidade,i.unidade)+(i.nome==='Batata inglesa'?' bruta / 380 g líquida':'')])));if(details.foto){const download=node('a','Baixar imagem com a ficha técnica','button recipe-download');download.href='assets/fichas/'+details.foto.replace(/\.[^.]+$/,'.png');download.download='Ficha-'+p.nome+'.png';s.append(download);}
+      const detailBody=node('div');detailBody.append(body,table(['Ingrediente','Quantidade por porção'],p.ingredientes.map(i=>[i.nome,window.oktoQuantidade(i.quantidade,i.unidade)+(i.nome==='Batata inglesa'?' bruta / 380 g líquida':'')])));s.append(fold('Ver ficha técnica',detailBody));if(details.foto){const download=node('a','Baixar imagem com a ficha técnica','button recipe-download');download.href='assets/fichas/'+details.foto.replace(/\.[^.]+$/,'.png');download.download='Ficha-'+p.nome+'.png';s.append(download);}
       if(!p.ativo && window.oktoRecipeEditor)s.append(window.oktoRecipeEditor(p,data.estoque));cards.append(s);
     });
     if(!recipes.length)cards.append(node('p',data.produtos.length?'Nenhuma ficha corresponde aos filtros.':'Nenhuma ficha cadastrada.'));root.append(cards);
   }
   if(page==='perdas') {
     const l=data.perdas;
-    root.append(metrics([['Custo total das perdas',money(l.custo_total_perdas),'Custos históricos dos lotes'],['Sobre a receita',number(l.percentual_sobre_receita_confirmada)+'%','Perdas ÷ receita confirmada'],['Porções descartadas',number(l.porcoes_perdidas_registradas),'Descarte de insumos não é contado como porção']]));
+    root.append(metrics([['Custo total das perdas',money(l.custo_total_perdas),'Custos históricos dos lotes'],['Sobre a receita',l.percentual_sobre_receita_confirmada==null?'—':number(l.percentual_sobre_receita_confirmada)+'%','Perdas ÷ receita confirmada'],['Porções descartadas',number(l.porcoes_perdidas_registradas),'Descarte de insumos não é contado como porção']]));
     const byRecipe=panel('Perdas por receita','Descartes sem receita não são atribuídos a sabores');byRecipe.id='perdas-por-receita';
     byRecipe.append(table(['Receita','Porções','Custo'],l.por_receita.map(i=>[i.nome,number(i.porcoes_registradas),money(i.custo)])));
     const lossItems=l.por_insumo.filter(i=>!filters.insumo||i.nome===filters.insumo), lossRows=l.registros.filter(i=>!filters.insumo||i.insumo===filters.insumo);
     const byItem=panel('Perdas por ingrediente'); byItem.append(table(['Ingrediente','Quantidade','Custo'],lossItems.map(i=>[i.nome,window.oktoQuantidade(i.quantidade,i.unidade),money(i.custo)])));
     const history=panel('Histórico de perdas',`${lossRows.length} movimentos no período`);history.append(table(['Data','Ingrediente','Quantidade','Motivo','Custo'],lossRows.map(i=>[date(i.criado_em),i.insumo,window.oktoQuantidade(i.quantidade,i.unidade),i.motivo,money(i.custo)])));
-    root.append(byRecipe,byItem,history);
+    if(window.oktoReadyForms)root.append(window.oktoReadyForms(data.prontos,data.produtos,{onlyDiscard:true}));
+    root.append(byRecipe,fold('Detalhar ingredientes',byItem),fold('Histórico de perdas',history));
     if(l.perdas_prontas?.length){const ready=panel('Descarte de porções prontas','Custo do lote pronto; sem repetir baixa de ingredientes');ready.append(table(['Data','Sabor','Porções','Motivo','Custo'],l.perdas_prontas.map(x=>[date(x.criado_em),x.produto_nome,number(x.porcoes),x.motivo,money(x.custo)])));root.append(ready);}
   }
   if(page==='producao') {
     if(window.oktoReadyForms)root.append(window.oktoReadyForms(data.prontos,data.produtos));
-    const s=panel('Produção e pronta entrega','O registro de produção baixa os ingredientes uma única vez; a venda baixa as porções prontas.');
-    s.append(table(['Sabor','Lote','Saldo pronto','Validade'],data.prontos.lotes.map(l=>[l.nome,l.codigo,number(l.saldo),date(l.validade)+' '+hour(l.validade)])));root.append(s);
+    const s=panel('Lotes prontos');
+    s.append(table(['Sabor','Lote','Saldo pronto','Validade'],data.prontos.lotes.map(l=>[l.nome,l.codigo,number(l.saldo),date(l.validade)+' '+hour(l.validade)])));if(data.prontos.lotes.length)root.append(fold(`Lotes registrados (${data.prontos.lotes.length})`,s));
   }
 }
 // Filtros: os do servidor recarregam os dados; os do navegador só redesenham a tela.
 const SERVER_FILTERS=['inicio','fim','dia_semana','produto_id','forma'];
 const PAGE_FILTERS={
-  index:['inicio','fim','dia_semana','produto_id','forma'],
+  index:[],
   vendas:['inicio','fim','dia_semana','produto_id','forma'],
   perdas:['inicio','fim','insumo'],
   estoque:['busca','situacao'],
@@ -146,7 +148,7 @@ function input(type,name,placeholder,data){
   return el;
 }
 function buildFilters(data){
-  const keys=PAGE_FILTERS[page]; if(!keys||document.querySelector('.filters')) return;
+  const keys=PAGE_FILTERS[page]; if(!keys?.length||document.querySelector('.filters')) return;
   const form=node('form',null,'filters panel');form.setAttribute('aria-label','Filtros');
   const controls={
     inicio:()=>field('De',input('date','inicio',null,data)),
@@ -194,7 +196,9 @@ function sync(reload){
   filterSummary();
   if(reload) load(1); else if(lastData) render(lastData);
 }
-async function load(pagina=1) {
+function editingForm(){return document.querySelector('.recipe-editor[open], .stock-editor[open], .ready-editor form[data-dirty="true"]') || document.activeElement?.closest('.recipe-editor');}
+async function load(pagina=1,automatic=false) {
+  if(automatic&&editingForm())return;
   status.textContent='Consultando registros…';
   const query=new URLSearchParams({pagina});
   SERVER_FILTERS.forEach(k=>{if(filters[k]&&(PAGE_FILTERS[page]||[]).includes(k))query.set(k,filters[k]);});
@@ -202,22 +206,24 @@ async function load(pagina=1) {
     const response=await fetch('/demo/dados?'+query,{cache:'no-store'});
     if(response.status===422) throw new Error('Filtro inválido: confira as datas selecionadas.');
     if(!response.ok) throw new Error(response.status===403?'Os dados não estão disponíveis para este computador. No servidor, confira LOCAL_DEMO_OPERATION_ID e DEMO_ACESSO_REMOTO.':`Não foi possível consultar os dados (HTTP ${response.status}).`);
-    const data=await response.json(); lastData=data;
+    const data=await response.json();
+    if(automatic&&editingForm())return;
+    lastData=data;
     document.querySelector('.workspace strong').textContent=data.operacao.nome;
     document.querySelector('.demo-badge').textContent=data.contexto.parametros.natureza_dados==='simulados'?'DEMONSTRAÇÃO • DADOS SIMULADOS':'DADOS DA OPERAÇÃO';
     const active=(PAGE_FILTERS[page]||[]).filter(k=>filters[k]).length;
-    status.textContent=`Período: ${date(data.periodo.inicio)} a ${date(data.periodo.fim)}${active?` • ${active} filtro(s) ativo(s)`:''}. Estoque: saldo atual. ${data.contexto.parametros.natureza_dados==='simulados'?'Registros simulados para demonstração.':''}`;
+    status.textContent=['vendas','perdas'].includes(page)?`${date(data.periodo.inicio)} a ${date(data.periodo.fim)}${active?` · ${active} filtro(s)`:''}`:'Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const periodLabel=document.querySelector('.actions span.button');
     if(periodLabel) periodLabel.textContent=`${date(data.periodo.inicio)} – ${date(data.periodo.fim)}`;
     buildFilters(data);
     render(data);
-  } catch(error) {root.replaceChildren();status.textContent=error.message;}
+  } catch(error) {if(automatic&&editingForm())return;root.replaceChildren();status.textContent=error.message;}
 }
 load();
 
 // Um evento do PostgreSQL atualiza estoque e fichas; não interrompe formulários em edição.
 let liveReload;
 window.addEventListener('okto:estoque',()=>{
-  if(document.querySelector('.recipe-editor[open], .stock-editor[open], .ready-editor[open]') || document.activeElement?.closest('.recipe-editor'))return;
-  clearTimeout(liveReload);liveReload=setTimeout(()=>load(lastData?.pagina||1),250);
+  if(document.querySelector('.recipe-editor[open], .stock-editor[open], .ready-editor form[data-dirty="true"]') || document.activeElement?.closest('.recipe-editor'))return;
+  clearTimeout(liveReload);liveReload=setTimeout(()=>load(lastData?.pagina||1,true),250);
 });
